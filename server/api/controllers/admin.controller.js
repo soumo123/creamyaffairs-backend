@@ -11,6 +11,8 @@ const jwt = require('jsonwebtoken')
 const Shops = require('../models/shop.model.js')
 const Settings = require('../models/settings.model.js')
 const Tax  = require('../models/Tax.model.js')
+const dotenv = require('dotenv');
+dotenv.config();
 
 
 

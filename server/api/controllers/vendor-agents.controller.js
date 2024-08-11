@@ -4,6 +4,8 @@ const Product = require("../models/product.model.js")
 const Distribute = require('../models/distribute-order.model.js')
 const uploadFileToS3 = require('../utils/fileUpload.js');
 const { getNextSequentialId, generateAndUploadBarcode } = require('../utils/helper.js');
+const dotenv = require('dotenv');
+dotenv.config();
 
 
 

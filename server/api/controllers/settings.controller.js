@@ -4,6 +4,8 @@ const uploadFileToS3 = require('../utils/fileUpload.js');
 const AWS = require('aws-sdk');
 
 const lambda = new AWS.Lambda();
+const dotenv = require('dotenv');
+dotenv.config();
 
 
 const updateSettings = async (req, res) => {

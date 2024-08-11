@@ -11,13 +11,7 @@ const orders = require('./api/routes/order/order.routes.js')
 const vendorsagents = require("././api/routes/vendor/vendor.routes.js")
 const dotenv = require('dotenv');
 const path = require('path');
-
-
-
-
-dotenv.config({
-    path:"D:/cake-shop/server/services/api/config/config.env"
-});
+dotenv.config();
 
 
 const app = express()
@@ -51,11 +45,12 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // For preflight requests (OPTIONS method)
-// app.options('*', cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // For handling non-preflight requests
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+  console.log(origin,"originoriginoriginoriginoriginoriginorigin")
   console.log("Request Origin (Middleware):", origin);
   if (allowedOrigins.includes(origin)) {
     console.log("Origin Allowed (Middleware):", origin);

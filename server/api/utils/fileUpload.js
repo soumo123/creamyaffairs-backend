@@ -11,7 +11,6 @@ const uploadFileToS3 = (bucketName, key, body)=>{
     return new Promise((resolve, reject) => {
       s3.upload(params, (err, data) => {
         if (err) {
-          console.log(err,"err stackkkkkk")
           reject(err);
         } else {
           resolve(data.Location);

@@ -4,6 +4,8 @@ const Tags = require('../models/tags.model.js')
 const Whishlists = require('../models/whishlist.model.js')
 const uploadFileToS3 = require('../utils/fileUpload.js')
 const { getNextSequentialId, checkPassword, getLastAndIncrementId ,generateAndUploadBarcode} = require('../utils/helper.js')
+const dotenv = require('dotenv');
+dotenv.config();
 
 
 const createProduct = async (req, res, next) => {

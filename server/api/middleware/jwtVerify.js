@@ -1,9 +1,7 @@
 const jwt = require('jsonwebtoken')
 const dotenv = require('dotenv');
+dotenv.config();
 
-dotenv.config({
-    path:"D:/creamyaffairs/server/api/config/config.env"
-});
 
 const ensureAuthenticated = async (req, res, next) => {
   try {

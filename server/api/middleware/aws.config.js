@@ -1,9 +1,6 @@
 const AWS = require('aws-sdk');
 const dotenv = require('dotenv');
-
-dotenv.config({
-    path:"D:/creamyaffairs/server/api/config/config.env"
-});
+dotenv.config();
 
 
 AWS.config.update({
