@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title><%= product.name %></title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            font-size: 2.5em;
+            color: #333;
+            margin-top: 0;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+        p {
+            font-size: 1.1em;
+            line-height: 1.6em;
+            margin: 10px 0;
+        }
+        strong {
+            color: #555;
+        }
+        .status {
+            font-weight: bold;
+            padding: 5px;
+            border-radius: 5px;
+            display: inline-block;
+        }
+        .active {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .inactive {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .product-type {
+            padding: 5px;
+            border-radius: 5px;
+            display: inline-block;
+            font-weight: bold;
+        }
+        .veg {
+            background-color: #e2e3e5;
+            color: #383d41;
+        }
+        .non-veg {
+            background-color: #d6d6d6;
+            color: #6c757d;
+        }
+        .images img {
+            width: 100px;
+            height: auto;
+            margin-right: 10px;
+            border-radius: 5px;
+        }
+        .weights ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .weights li {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .reviews {
+            margin-top: 20px;
+        }
+        .review {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            display: flex;
+            align-items: flex-start;
+        }
+        .review img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .review-content {
+            flex: 1;
+        }
+        .review-date {
+            color: #888;
+            font-size: 0.9em;
+        }
+        .created-date {
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><%= product.name %></h1>
+        <img src="<%= product.barcodeUrl %>" alt="Barcode">
+        <p><strong>Product ID:</strong> <%= product.productId %></p>
+        <p><strong>Description:</strong> <%= product.description %></p>
+        <p><strong>Other Description1 :</strong> <%= product.other_description1 %></p>
+        <p><strong>Other Description2:</strong> <%= product.other_description2 %></p>
+        <p><strong>Delivery Partner:</strong> <%= product.delivery_partner %></p>
+        <p class="status <%= product.active === 0 ? 'inactive' : 'active' %>">
+            <strong>Status:</strong> <%= product.active === 0 ? 'Inactive' : 'Active' %>
+        </p>
+
+        <p class="product-type <%= product.product_type === 1 ? 'veg' : 'non-veg' %>">
+            <strong>Product Type:</strong> <%= product.product_type === 1 ? 'Veg' : 'Non Veg' %>
+        </p>
+
+        <p><strong>Unit:</strong> <%= product.unit %></p>
+        <p><strong>Purchase Selling Method:</strong> <%= product.purchase_price %></p>
+
+        <h2>Images:</h2>
+        <div class="images">
+            <% product.otherimages.forEach(function(imageUrl) { %>
+                <img src="<%= imageUrl %>" alt="Product Image">
+            <% }); %>
+        </div>
+
+        <h2>Weights:</h2>
+        <div class="weights">
+            <ul>
+                <% product.weight.forEach(function(weightItem) { %>
+                    <li>
+                        <strong>Weight:</strong> <%= weightItem.weight %> <br>
+                        <strong>Price:</strong> ₹<%= weightItem.price %> <br>
+                        <strong>Stock:</strong> <%= weightItem.stock %> <br>
+                        <strong>Purchase Price:</strong> ₹ <%= weightItem.purchaseprice %>
+                    </li>
+                <% }); %>
+            </ul>
+        </div>
+
+        <p><strong>Total Likes:</strong> <%= product.likes %></p>
+        <p><strong>Number Of Reviews:</strong> <%= product.numOfReviews %></p>
+
+        <p class="created-date">
+            <strong>Created On:</strong> 
+            <% 
+            var createdAt = new Date(product.created_at); 
+            var formattedDate = createdAt.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            %>
+            <%= formattedDate %>
+        </p>
+
+        <h2>Reviews:</h2>
+        <div class="reviews">
+            <% product.reviews.forEach(function(review) { %>
+                <div class="review">
+                    <img src="<%= review.userImage %>" alt="<%= review.username %>'s image">
+                    <div class="review-content">
+                        <strong><%= review.username %></strong> 
+                        <span>Rating: <%= review.rating %>/5</span>
+                        <p><strong>Comment:</strong> <%= review.comment %></p>
+                        <p class="review-date">
+                            <% 
+                            var reviewDate = new Date(review.created_at);
+                            var formattedReviewDate = reviewDate.toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric' 
+                            });
+                            %>
+                            <strong>Date:</strong> <%= formattedReviewDate %>
+                        </p>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    </div>
+</body>
+</html>
