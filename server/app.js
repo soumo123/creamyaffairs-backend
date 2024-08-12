@@ -23,6 +23,7 @@ const allowedOrigins = [
   process.env.REACT_LOCAL_CLIENT_URL,
   process.env.REACT_LOCAL_CLIENT_DASHBOARD_URL,
   process.env.REACT_LOCAL_CLIENT_ADMIN_URL,
+  'https://creamyaffairs.1kliq.com/'
 
 ];
 
