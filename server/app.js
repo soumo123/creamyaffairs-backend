@@ -27,42 +27,40 @@ const allowedOrigins = [
 
 ];
 
-// console.log("Allowed Origins:", allowedOrigins);
+console.log("Allowed Origins:", allowedOrigins);
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      console.log("Cors enable")
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    console.log("Request Origin:", origin);
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    // Allow any origin
+    callback(null, true);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 };
 
-app.use(cors(corsOptions ));
+app.use(cors(corsOptions));
 
 // For preflight requests (OPTIONS method)
 app.options('*', cors(corsOptions));
 
 // For handling non-preflight requests
-// app.use((req, res, next) => {
-//   const origin = req.headers.origin;
-//   console.log(origin,"originoriginoriginoriginoriginoriginorigin")
-//   console.log("Request Origin (Middleware):", origin);
-//   if (allowedOrigins.includes(origin)) {
-//     console.log("Origin Allowed (Middleware):", origin);
-//     res.setHeader('Access-Control-Allow-Origin', origin);
-//   }
-//   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-//   res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization');
-//   res.setHeader('Access-Control-Allow-Credentials', true);
-//   return next();
-// });
-
+app.use((req, res, next) => {
+  console.log("req.headers",req.headers)
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    console.log("Origin Allowed (Middleware):", origin);
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  return next();
+});
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser())
