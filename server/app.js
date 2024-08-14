@@ -29,24 +29,24 @@ const allowedOrigins = [
 
 // console.log("Allowed Origins:", allowedOrigins);
 
-// const corsOptions = {
-//   origin: (origin, callback) => {
-//     console.log("Request Origin:", origin);
-//     // Allow requests with no origin (like mobile apps or curl requests)
-//     if (!origin) return callback(null, true);
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      console.log("Cors enable")
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
 
-//     // Allow any origin
-//     callback(null, true);
-//   },
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-//   allowedHeaders: ['Content-Type', 'Authorization'],
-//   credentials: true
-// };
-
-app.use(cors());
+app.use(cors(corsOptions ));
 
 // For preflight requests (OPTIONS method)
-// app.options('*', cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // For handling non-preflight requests
 // app.use((req, res, next) => {
