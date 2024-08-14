@@ -51,7 +51,7 @@ app.options('*', cors(corsOptions));
 // For handling non-preflight requests
 app.use((req, res, next) => {
   console.log("req.headers",req.headers)
-  const origin = req.headers.origin;
+  const origin = req.headers.host;
   if (allowedOrigins.includes(origin)) {
     console.log("Origin Allowed (Middleware):", origin);
     res.setHeader('Access-Control-Allow-Origin', origin);
