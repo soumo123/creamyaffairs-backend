@@ -11,6 +11,7 @@ const orders = require('./api/routes/order/order.routes.js')
 const vendorsagents = require("././api/routes/vendor/vendor.routes.js")
 const dotenv = require('dotenv');
 const path = require('path');
+const { productExpiry, sendNotification } = require('./api/crone-files/productexpire.js');
 dotenv.config();
 
 
@@ -50,10 +51,8 @@ app.options('*', cors(corsOptions));
 
 // For handling non-preflight requests
 app.use((req, res, next) => {
-  console.log("req.headers",req.headers)
   const origin = req.headers.host;
   if (allowedOrigins.includes(origin)) {
-    console.log("Origin Allowed (Middleware):", origin);
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -79,6 +78,8 @@ app.use("/api/v1/checkout",checkouts)
 app.use("/api/v1/orders",orders)
 app.use("/api/v1/inventory",vendorsagents)
 
+// productExpiry()
+// sendNotification()
 app.get('/',function(req,res){
   res.set('Content-type', 'text/html;charset=utf-8');
   res.send(`

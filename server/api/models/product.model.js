@@ -9,6 +9,9 @@ const productSchema = new mongoose.Schema({
     type:{
         type:Number,
     },
+    agentId:{
+        type:String
+    },
     name: {
         type: String,
         required: true
@@ -189,6 +192,18 @@ const productSchema = new mongoose.Schema({
     active:{
         type:Number,
         default:1
+    },
+    expired:{
+        type:Boolean,
+        default:false
+    },
+    expiry_date:{
+        type:Date,
+        default:"",
+    },
+    manufacture_date:{
+        type:Date,
+        default:""
     },
     created_at: {
         type: Date,

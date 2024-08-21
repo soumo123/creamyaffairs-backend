@@ -201,6 +201,68 @@ const generateAndUploadBarcode = (productId)=>{
 }
 
 
+const checkExpiry = (expiryDate) => {
+  const currentDate = new Date();
+  const expiry = new Date(expiryDate);
+
+  // Calculate the difference in time
+  const timeDiff = expiry.getTime() - currentDate.getTime();
+
+  if (timeDiff < 0) {
+    return "Expired already";
+  } else {
+    let years = expiry.getFullYear() - currentDate.getFullYear();
+    let months = expiry.getMonth() - currentDate.getMonth();
+    let days = expiry.getDate() - currentDate.getDate();
+    let hours = expiry.getHours() - currentDate.getHours();
+    let minutes = expiry.getMinutes() - currentDate.getMinutes();
+    let seconds = expiry.getSeconds() - currentDate.getSeconds();
+
+    // Adjust for negative seconds
+    if (seconds < 0) {
+      minutes -= 1;
+      seconds += 60;
+    }
+
+    // Adjust for negative minutes
+    if (minutes < 0) {
+      hours -= 1;
+      minutes += 60;
+    }
+
+    // Adjust for negative hours
+    if (hours < 0) {
+      days -= 1;
+      hours += 24;
+    }
+
+    // Adjust for negative days, months, etc.
+    if (days < 0) {
+      months -= 1;
+      days += new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+    }
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+
+    let result = "";
+
+    if (years > 0) {
+      result += `${years} year${years > 1 ? 's' : ''}, `;
+    }
+    if (months > 0 || years > 0) {
+      result += `${months} month${months > 1 ? 's' : ''}, `;
+    }
+    result += `${days} day${days > 1 ? 's' : ''}, `;
+    result += `${hours} hour${hours !== 1 ? 's' : ''}, `;
+    result += `${minutes} minute${minutes !== 1 ? 's' : ''} time left to expire`;
+
+    return result;
+  }
+}
+
+
 
 
 module.exports  =  {
@@ -209,6 +271,7 @@ module.exports  =  {
     getLastAndIncrementId,
     getLastTypeId,
     getLastAdressId,
-    generateAndUploadBarcode
+    generateAndUploadBarcode,
+    checkExpiry
   }
   

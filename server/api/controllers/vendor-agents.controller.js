@@ -2,6 +2,7 @@ const Vendor = require('../models/vendor.model.js');
 const Agent = require("../models/agent.model.js");
 const Product = require("../models/product.model.js")
 const Distribute = require('../models/distribute-order.model.js')
+const Expire = require('../models/expiredproducts.model.js')
 const uploadFileToS3 = require('../utils/fileUpload.js');
 const { getNextSequentialId, generateAndUploadBarcode } = require('../utils/helper.js');
 const dotenv = require('dotenv');
@@ -131,7 +132,8 @@ const addAgent = async (req, res) => {
         const agent = await Agent.create({
             agentId: lastId, name, email, phone, address, image: s3Url, shopId: shop_id, vendorId: vendor_id
         })
-        console.log
+        
+        const result = await Expire.create({agentId:lastId,agentname:name,shopid:shop_id})
 
         return res.status(201).send({ message: "Agent Added", success: true })
     } catch (error) {
@@ -249,6 +251,7 @@ const addInventory = async (req, res) => {
                 productId: lastId,
                 shop_id: Number(shop_id),
                 type: Number(type),
+                agentId:agentId,
                 name: ele.productName,
                 description: "",
                 other_description1: "",
@@ -291,7 +294,9 @@ const addInventory = async (req, res) => {
                 numOfReviews: 0,
                 whishListIds: [],
                 reviews: [],
-                active: 0
+                active: 0,
+                manufacture_date:ele.manufacture_date,
+                expiry_date:ele.expiry_date
             }
 
             await Product.create(json)
@@ -489,7 +494,9 @@ const updateStock = async (req, res) => {
                     whishListIds: [],
                     reviews: [],
                     active: 0,
-                    barcodeUrl:barcodeUrl
+                    barcodeUrl:barcodeUrl,
+                    manufacture_date:ele.manufacture_date,
+                    expiry_date:ele.expiry_date
                 }
                 await Product.create(json)
                 ele.weights.forEach((uu) => {
@@ -509,8 +516,20 @@ const updateStock = async (req, res) => {
         for (let ele of savedProducts) {
             let lastId = ele.productId;
 
-            const update = await Product.updateOne({ productId: ele.productId, type: Number(type), adminId: adminId }, { $set: { weight: ele.weights } })
+            const update = await Product.updateOne({ productId: ele.productId, type: Number(type), adminId: adminId }, { $set: { weight: ele.weights ,manufacture_date:ele.manufacture_date,expiry_date:ele.expiry_date,expired:false} })
 
+            const expiryres = await Expire.updateOne(
+                { 
+                    shop_id: shop_id, 
+                    "productId": ele.productId
+                },
+                { 
+                    $pull: { 
+                        productId: ele.productId
+                    }
+                }
+            
+            )
 
             ele.weights.forEach((uu) => {
                 totalPrice += uu.purchaseprice * uu.stock
@@ -539,6 +558,9 @@ const updateStock = async (req, res) => {
 
         }
         await Distribute.create(json)
+
+
+
         return res.status(201).send({ message: "added", success: true })
 
     } catch (error) {
