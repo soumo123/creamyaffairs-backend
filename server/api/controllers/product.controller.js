@@ -427,9 +427,9 @@ const getAllProducts = async (req, res) => {
         }
 
         if (tags.length > 0) {
-            query = { type: type, active: 1, selling_price_method: "offline", tags: { $in: tags }, price: { $gte: startPrice, $lte: lastPrice } };
+            query = { type: type, active: 1, expired:false,selling_price_method: "offline", tags: { $in: tags }, price: { $gte: startPrice, $lte: lastPrice } };
         } else {
-            query = { type: type, active: 1, selling_price_method: "offline", price: { $gte: startPrice, $lte: lastPrice } };
+            query = { type: type, active: 1, expired:false,selling_price_method: "offline", price: { $gte: startPrice, $lte: lastPrice } };
         }
         if (!type) {
             return res.status(200).send({
@@ -456,32 +456,32 @@ const getAllProducts = async (req, res) => {
             .limit(limit);
 
 
-        const featuredData = await Product.find({ active: 1, selling_price_method: "offline", isFeatured: true }).sort({ _id: -1 })
+        const featuredData = await Product.find({ active: 1,expired:false,selling_price_method: "offline", isFeatured: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const bestSellingData = await Product.find({ active: 1, selling_price_method: "offline", isBestSelling: true }).sort({ _id: -1 })
+        const bestSellingData = await Product.find({ active: 1,expired:false,selling_price_method: "offline", isBestSelling: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const brandedData = await Product.find({ active: 1, selling_price_method: "offline", isBranded: true }).sort({ _id: -1 })
+        const brandedData = await Product.find({ active: 1, expired:false, selling_price_method: "offline", isBranded: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const topSellingData = await Product.find({ active: 1, selling_price_method: "offline", isTopSelling: true }).sort({ _id: -1 })
+        const topSellingData = await Product.find({ active: 1, expired:false, selling_price_method: "offline", isTopSelling: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const dealsData = await Product.find({ active: 1, selling_price_method: "offline", isOffered: true }).sort({ _id: -1 })
+        const dealsData = await Product.find({ active: 1, expired:false, selling_price_method: "offline", isOffered: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const latestProducts = await Product.find({ active: 1, selling_price_method: "offline", created_at: { $gte: latest } }).sort({ _id: -1 })
+        const latestProducts = await Product.find({ active: 1, expired:false, selling_price_method: "offline", created_at: { $gte: latest } }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
 
-        const totalProducts = await Product.find({ active: 1, selling_price_method: "offline" })
+        const totalProducts = await Product.find({ active: 1, expired:false, selling_price_method: "offline" })
 
         return res.status(200).send({
             message: "Get All Products",
