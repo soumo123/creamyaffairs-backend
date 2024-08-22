@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { signIn, signUp,getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, getAdmin, createShop, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, getTax, updateTax } = require('../../controllers/admin.controller.js');
+const { signIn, signUp,getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, getAdmin, createShop, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, getTax, updateTax,getAllNotifications,updateNotification } = require('../../controllers/admin.controller.js');
 const {ensureAuthenticated} = require('../../middleware/jwtVerify.js')
 const multer = require('multer');
 
@@ -33,6 +33,12 @@ router.get("/getdashbordDetails",dashboardContents)
 
 router.put('/update_tax',updateTax)
 router.get('/get_tax',getTax)
+
+//notification route //
+
+
+router.get('/get_notification',getAllNotifications)
+router.put('/update_noti',updateNotification)
 
 
 module.exports = router
