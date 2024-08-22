@@ -21,6 +21,7 @@ const productExpiry = async () => {
                         { $eq: [{ $dayOfMonth: "$expiry_date" }, { $dayOfMonth: new Date() }] }
                     ]
                 },
+                active:1,
                 expired: false
             });
             if (products.length > 0) {
@@ -95,7 +96,9 @@ const sendNotification = async () => {
                         productId: "$productId",
                         weight: "$weight.weight",
                         stock: "$weight.stock",
-                        unit: "$unit"
+                        unit: "$unit",
+                        adminId:"$adminId",
+                        type:"$type"
                     }
                 }
             ])
@@ -109,8 +112,11 @@ const sendNotification = async () => {
 
                     await Notification.create({
                         productId: ele.productId,
+                        adminId:ele.adminId,
                         productname: ele.name,
-                        message: `Hurry ${checkTime}`
+                        message: `Hurry ${checkTime}`,
+                        type:ele.type,
+                        notification_type:1
                     })
                 }
             }
@@ -119,6 +125,9 @@ const sendNotification = async () => {
                 for (let ele of stockProducts) {
                     await Notification.create({
                         productId: ele.productId,
+                        adminId:ele.adminId,
+                        type:ele.type,
+                        notification_type:2,
                         productname: ele.productname,
                         message: `${ele.productname} of weight ${ele.weight} ${ele.unit} have only ${ele.stock} items left`
                     })
@@ -136,4 +145,3 @@ const sendNotification = async () => {
 
 }
 module.exports = { productExpiry, sendNotification }
-
