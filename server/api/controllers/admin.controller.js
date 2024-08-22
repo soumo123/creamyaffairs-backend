@@ -11,6 +11,7 @@ const jwt = require('jsonwebtoken')
 const Shops = require('../models/shop.model.js')
 const Settings = require('../models/settings.model.js')
 const Tax  = require('../models/Tax.model.js')
+const Notification = require('../models/notification.model.js')
 const dotenv = require('dotenv');
 dotenv.config();
 
@@ -666,5 +667,71 @@ const getTax = async(req,res)=>{
 }
 
 
+const adminSignin = async (req, res) => {
 
-module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews,dashboardContents , updateTax ,getTax}
+    try {
+
+        
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+}
+
+
+
+
+
+const getAllNotifications = async (req, res) => {
+
+    const { adminId, type } = req.query
+
+
+    try {
+        if (!adminId || !type) {
+            return res.status(400).send({ success: false, message: "Missing Credentials" })
+        }
+
+        const result = await Notification.find({ checked: false, adminId: adminId, type: Number(type) })
+        if (result.length > 0) {
+            return res.status(400).send({ message: "No Notification Found", success: false })
+        }
+
+        let arr = result.map((ele) => ({
+            message: ele.message,
+            noti_type: ele.notification_type
+        }))
+
+
+        return res.status(200).send({ message: "Get all Notifications", success: true, data: arr })
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+
+}
+
+const updateNotification = async (req, res) => {
+
+    const { adminId, type } = req.query
+
+    try {
+        if (!adminId || !type) {
+            return res.status(400).send({ success: false, message: "Missing Credentials" })
+        }
+
+        const result = await Notification.updateMany({ adminId: adminId, type: Number(type) }, { $set: { checked: true } })
+
+        return res.status(200).send({ success: true })
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+}
+
+module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews,dashboardContents , updateTax ,getTax, getAllNotifications, updateNotification,adminSignin}
