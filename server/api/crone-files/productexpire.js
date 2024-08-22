@@ -104,7 +104,6 @@ const sendNotification = async () => {
             ])
 
             console.log("stockProducts", stockProducts)
-
             if (expiryproducts.length > 0) {
                 console.log("Crone Start For Expiry Products-------------------------");
                 for (let ele of expiryproducts) {

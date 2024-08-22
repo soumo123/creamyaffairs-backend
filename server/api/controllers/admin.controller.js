@@ -687,15 +687,13 @@ const adminSignin = async (req, res) => {
 const getAllNotifications = async (req, res) => {
 
     const { adminId, type } = req.query
-
-
     try {
         if (!adminId || !type) {
             return res.status(400).send({ success: false, message: "Missing Credentials" })
         }
 
-        const result = await Notification.find({ checked: false, adminId: adminId, type: Number(type) })
-        if (result.length > 0) {
+        const result = await Notification.find({adminId: adminId, type: Number(type) })
+        if (result.length === 0) {
             return res.status(400).send({ message: "No Notification Found", success: false })
         }
 
@@ -734,4 +732,24 @@ const updateNotification = async (req, res) => {
     }
 }
 
-module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews,dashboardContents , updateTax ,getTax, getAllNotifications, updateNotification,adminSignin}
+const countNotification = async(req,res)=>{
+    const { adminId, type } = req.query
+
+    try {
+        if (!adminId || !type) {
+            return res.status(400).send({ success: false, message: "Missing Credentials" })
+        }
+        const result = await Notification.find({ checked: false, adminId: adminId, type: Number(type) })
+        if (result.length === 0) {
+            return res.status(400).send({ message: "No Notification Found", success: false })
+        }
+
+        return res.status(200).send({ message: "No of notifications", success: true, data: result.length })
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+}
+
+module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews,dashboardContents , updateTax ,getTax, getAllNotifications, updateNotification,countNotification,adminSignin}
