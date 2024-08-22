@@ -1,9 +1,22 @@
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
+const { required } = require('nodemon/lib/config');
 
 const notificationSchema = new mongoose.Schema({
     productId:{
         type:String,
         required:true
+    },
+    adminId:{
+        type:String,
+        required:true
+    },
+    type:{
+        type:Number,
+        required:true
+    },
+    checked:{
+        type:Boolean,
+        default:false
     },
     productname: {
         type: String,
