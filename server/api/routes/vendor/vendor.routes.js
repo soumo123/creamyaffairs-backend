@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { addVendor,addAgent, getAllVendors, getallAgents, addInventory, getTransctions, updateStock, updateMoney, viewTransaction, barCodeProduct} = require('../../controllers/vendor-agents.controller.js');
+const { addVendor,addAgent, getAllVendors, getallAgents, addInventory, getTransctions, updateStock, updateMoney, viewTransaction, barCodeProduct,viewVendorAgent} = require('../../controllers/vendor-agents.controller.js');
 const {ensureAuthenticated} = require('../../middleware/jwtVerify.js')
 const multer = require('multer');
 
@@ -21,5 +21,5 @@ router.put('/update_transction',updateMoney)
 router.get('/view_transaction',viewTransaction)
 
 router.get('/product/:id',barCodeProduct)
-
+router.get('/view_agent_vendor',viewVendorAgent)
 module.exports = router
