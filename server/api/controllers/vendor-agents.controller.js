@@ -671,7 +671,50 @@ const barCodeProduct = async(req,res)=>{
     }
 }
 
+const viewVendorAgent = async(req,res)=>{
 
+    const{agentId,vendorId,shop_id,key} = req.query
+    let response = undefined;
+    let json;
+    try {
+        if(!key){
+            return res.status(400).send({success:false,message:"Missing keys"})
+        }
+
+        if(Number(key)===1){
+            response = await Vendor.findOne({vendorId:vendorId,shopId:shop_id})
+            console.log("response",response)
+            json = {
+                id:response.vendorId,
+                name:response.name,
+                email:response.email,
+                phone:response.phone,
+                image:response.image,
+
+            }
+        }else if(Number(key)===2){
+            response = await Agent.findOne({vendorId:vendorId,shopId:shop_id,agentId:agentId})
+            json = {
+                id:response.vendorId,
+                ag_id:response.agentId,
+                name:response.name,
+                email:response.email,
+                phone:response.phone,
+                image:response.image,
+
+            }
+        }   
+       
+        return res.status(200).send({
+            success:true,
+            data:json
+        })
+    
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+}
 module.exports = {
     addVendor,
     addAgent,
@@ -683,5 +726,6 @@ module.exports = {
     updateMoney,
     viewTransaction,
     barCodeProduct,
-    updateVendor
+    updateVendor,
+    viewVendorAgent
 }
