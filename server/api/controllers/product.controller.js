@@ -2,6 +2,7 @@ const Cart = require('../models/cart.model.js')
 const Product = require('../models/product.model.js')
 const Tags = require('../models/tags.model.js')
 const Whishlists = require('../models/whishlist.model.js')
+const Expiry = require('../models/expiredproducts.model.js')
 const uploadFileToS3 = require('../utils/fileUpload.js')
 const { getNextSequentialId, checkPassword, getLastAndIncrementId ,generateAndUploadBarcode} = require('../utils/helper.js')
 const dotenv = require('dotenv');
@@ -1211,7 +1212,52 @@ const productPriceVariation = async (req, res) => {
 
 }
 
+const expiryproducts = async(req,res)=>{
 
+    const { adminId, shop_id , agentId} = req.query
+    try {
+        
+        if (!adminId || !shop_id || !agentId) {
+            return res.status(400).send({ success: false, message: "Missing Credentials" })
+        }
+
+        const result = await Expiry.find({
+            agentId:agentId,
+            shop_id:shop_id,
+        })
+
+        if(result.productId.length===0){
+            return res.status(400).send({
+                success:false,
+                message:"No Products Found of that Agent"
+            })
+        }
+
+        let allpdids = result.productId.map((ele)=>ele)
+
+        const allproducts  = await Product.find({productId:{$in:allpdids}})
+        let totalcount = allproducts.length
+
+        let modifieddata = allproducts.map((el)=>({
+            productId:el.productId,
+            name:ele.name,
+            unit:el.unit,
+            weight:el.weight,
+            active:el.active,
+            expired:el.expired,
+            image:el.thumbnailimage,
+        }))
+        return res.status(200).send({
+            success:true,
+            message:"Get all expired products of that specific agent",
+            totaldata:totalcount,
+            data:modifieddata
+        })
+    } catch (error) {
+          console.error(error);
+        return res.status(500).send({ message: "Internal Server Error", error: error.message });
+    }
+}
 
 module.exports = {
     createProduct,
@@ -1234,5 +1280,6 @@ module.exports = {
     getWhishListProducts,
     countUpdate,
     updateCategoryStatus,
-    productPriceVariation
+    productPriceVariation,
+    expiryproducts
 } 
