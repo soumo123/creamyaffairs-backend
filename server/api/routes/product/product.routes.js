@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { addToCart, addWhishList, adminProducts, createProduct , createTags, deleteCartItems, deleteProductByAdmin, deleteSpecificItemFromCart, deleteTags, editTag, getAllCartProducts, getAllProducts, getAllTags, getTotalRatings, getWhishListProducts, getProductById, updateProduct, avaliabilityCheck, countUpdate, updateCategoryStatus, productPriceVariation } = require('../../controllers/product.controller.js');
+const { addToCart, addWhishList, adminProducts, createProduct , createTags, deleteCartItems, deleteProductByAdmin, deleteSpecificItemFromCart, deleteTags, editTag, getAllCartProducts, getAllProducts, getAllTags, getTotalRatings, getWhishListProducts, getProductById, updateProduct, avaliabilityCheck, countUpdate, updateCategoryStatus, productPriceVariation,expiryproducts } = require('../../controllers/product.controller.js');
 const {ensureAuthenticated} = require('../../middleware/jwtVerify.js')
 const multer = require('multer');
 
@@ -35,5 +35,5 @@ router.delete('/delete_product_by_admin', deleteProductByAdmin);
 router.delete("/delete_tags/:adminId",deleteTags)
 router.put("/update_tags/:adminId/:tag_id",upload1,editTag)
 
-
+router.get('/get_expiry_products',expiryproducts)
 module.exports = router
