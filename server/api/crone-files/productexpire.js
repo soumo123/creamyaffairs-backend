@@ -92,6 +92,7 @@ const sendNotification = async () => {
                 {
                     $project: {
                         _id: 0,
+                        agentId:"$agentId",
                         productname: "$name",
                         productId: "$productId",
                         weight: "$weight.weight",
@@ -125,6 +126,7 @@ const sendNotification = async () => {
                     await Notification.create({
                         productId: ele.productId,
                         adminId:ele.adminId,
+                        agentId:ele.agentId,
                         type:ele.type,
                         notification_type:2,
                         productname: ele.productname,

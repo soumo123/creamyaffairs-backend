@@ -10,6 +10,10 @@ const notificationSchema = new mongoose.Schema({
         type:String,
         required:true
     },
+    agentId:{
+        type:String,
+        required:true
+    },
     type:{
         type:Number,
         required:true

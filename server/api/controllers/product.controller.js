@@ -1214,7 +1214,11 @@ const productPriceVariation = async (req, res) => {
 
 const expiryproducts = async(req,res)=>{
 
-    const { adminId, shop_id , agentId} = req.query
+    let { adminId, shop_id , agentId , limit , offset} = req.query
+
+    limit = parseInt(limit);
+    offset =parseInt(offset);
+
     try {
         
         if (!adminId || !shop_id || !agentId) {
@@ -1226,21 +1230,26 @@ const expiryproducts = async(req,res)=>{
             shop_id:shop_id,
         })
 
-        if(result.productId.length===0){
+    
+
+        if(result.length===0){
             return res.status(400).send({
                 success:false,
                 message:"No Products Found of that Agent"
             })
         }
 
-        let allpdids = result.productId.map((ele)=>ele)
+        let allpdids = result[0].productId.map((ele)=>ele)
 
-        const allproducts  = await Product.find({productId:{$in:allpdids}})
-        let totalcount = allproducts.length
+        const allproducts  = await Product.find({productId:{$in:allpdids}}).skip(offset)
+        .limit(limit);
+        const alldata = await Product.find({productId:{$in:allpdids}})
+
+        let totalcount = alldata.length
 
         let modifieddata = allproducts.map((el)=>({
             productId:el.productId,
-            name:ele.name,
+            name:el.name,
             unit:el.unit,
             weight:el.weight,
             active:el.active,

@@ -10,9 +10,11 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const Shops = require('../models/shop.model.js')
 const Settings = require('../models/settings.model.js')
-const Tax  = require('../models/Tax.model.js')
+const Tax = require('../models/Tax.model.js')
 const Notification = require('../models/notification.model.js')
+const Agent = require("../models/agent.model.js");
 const dotenv = require('dotenv');
+
 dotenv.config();
 
 
@@ -218,8 +220,8 @@ const userSpecificDetails = async (req, res) => {
         }))
 
         //get all orders ///
-        orders = await Order.findOne({userId:userId})
-        if(!orders){
+        orders = await Order.findOne({ userId: userId })
+        if (!orders) {
             orders = []
         }
 
@@ -623,22 +625,24 @@ const dashboardContents = async (req, res) => {
     }
 };
 
-const updateTax = async(req,res)=>{
+const updateTax = async (req, res) => {
 
     try {
-        const {cgst,sgst,cgstvalue,sgstvalue} = req.body
+        const { cgst, sgst, cgstvalue, sgstvalue } = req.body
         const adminId = req.query.adminId
 
-        let response  = await Tax.updateOne({},{$set:{
-            adminId:adminId,
-            cgst:Number(cgst),
-            sgst:Number(sgst),
-            cgstvalue:Number(cgstvalue),
-            sgstvalue:Number(sgstvalue)
-        }})
-        
-        return res.status(201).send({message: "Tax Updated",success:true})
-        
+        let response = await Tax.updateOne({}, {
+            $set: {
+                adminId: adminId,
+                cgst: Number(cgst),
+                sgst: Number(sgst),
+                cgstvalue: Number(cgstvalue),
+                sgstvalue: Number(sgstvalue)
+            }
+        })
+
+        return res.status(201).send({ message: "Tax Updated", success: true })
+
     } catch (error) {
         console.log(error.stack);
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
@@ -649,21 +653,21 @@ const updateTax = async(req,res)=>{
 
 
 
-const getTax = async(req,res)=>{
-    
+const getTax = async (req, res) => {
+
     try {
         const adminId = req.query.adminId
         const tax = await Tax.findOne({})
-        if(!tax){
-            return res.status(400).send({message: "Tax Not Found",success:false})
+        if (!tax) {
+            return res.status(400).send({ message: "Tax Not Found", success: false })
         }
-        return res.status(200).send({message:"Get all tax",data:tax})
-        
+        return res.status(200).send({ message: "Get all tax", data: tax })
+
     } catch (error) {
         console.log(error.stack);
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
     }
-    
+
 }
 
 
@@ -671,7 +675,7 @@ const adminSignin = async (req, res) => {
 
     try {
 
-        
+
 
     } catch (error) {
         console.log(error.stack);
@@ -686,20 +690,35 @@ const adminSignin = async (req, res) => {
 
 const getAllNotifications = async (req, res) => {
 
-    const { adminId, type } = req.query
+    let { adminId, type } = req.query
+    let mp = new Map()
+
     try {
         if (!adminId || !type) {
             return res.status(400).send({ success: false, message: "Missing Credentials" })
         }
 
-        const result = await Notification.find({adminId: adminId, type: Number(type) })
+        const agents = await Agent.find({})
+
+        const result = await Notification.find({ checked:false,adminId: adminId, type: Number(type) })
+
         if (result.length === 0) {
             return res.status(400).send({ message: "No Notification Found", success: false })
         }
 
+        agents.forEach(item => {
+            mp.set(item.agentId, {
+               ag_id:item.agentId,
+               name:item.name,
+               email:item.email,
+               phone:item.phone
+            });
+        });
         let arr = result.map((ele) => ({
+            _id: ele._id,
             message: ele.message,
-            noti_type: ele.notification_type
+            noti_type: ele.notification_type,
+            agent_details:mp.get(ele.agentId)
         }))
 
 
@@ -732,7 +751,7 @@ const updateNotification = async (req, res) => {
     }
 }
 
-const countNotification = async(req,res)=>{
+const countNotification = async (req, res) => {
     const { adminId, type } = req.query
 
     try {
@@ -752,4 +771,4 @@ const countNotification = async(req,res)=>{
     }
 }
 
-module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews,dashboardContents , updateTax ,getTax, getAllNotifications, updateNotification,countNotification,adminSignin}
+module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, updateTax, getTax, getAllNotifications, updateNotification, countNotification, adminSignin }

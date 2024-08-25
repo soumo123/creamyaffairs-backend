@@ -3,6 +3,9 @@ const Agent = require("../models/agent.model.js");
 const Product = require("../models/product.model.js")
 const Distribute = require('../models/distribute-order.model.js')
 const Expire = require('../models/expiredproducts.model.js')
+const RequestOrder = require('../models/requestorder.model.js')
+const Notification = require('../models/notification.model.js')
+
 const uploadFileToS3 = require('../utils/fileUpload.js');
 const { getNextSequentialId, generateAndUploadBarcode } = require('../utils/helper.js');
 const dotenv = require('dotenv');
@@ -715,6 +718,84 @@ const viewVendorAgent = async(req,res)=>{
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
     }
 }
+
+
+const requestOrder = async(req,res)=>{
+
+    let {adminId,shop_id,not_id} = req.query
+    let body = req.body
+
+    try {
+
+        if(!adminId || !shop_id) {
+            return res.status(400).send({success:false,message:"Missing creendentials"})
+        }
+        const lastId = await getNextSequentialId("REQ")
+
+        const result = await RequestOrder.create({
+            adminId:adminId,
+            reqId:lastId,
+            agentId:body.agentId,
+            shopId:shop_id,
+            quantity:body.quantity,
+            agentname:body.agentname,
+            email:body.email,
+            phone:body.phone,
+            message:body.message
+        })
+
+        const eliminatenotification = await Notification.updateOne({_id:not_id},{$set:{checked:true}})
+
+        return res.status(201).send({success:true,message:"Request Sent"})
+
+        
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+}
+
+
+const getAllRequstedOrders = async(req,res)=>{
+
+    let {adminId,limit,offset} = req.query
+
+    limit = parseInt(limit);
+    offset = parseInt(offset)
+
+    try {
+        if(!adminId) {
+            return res.status(400).send({success:false,message:"Missing creendentials"})
+        }
+
+        const allorders = await RequestOrder.find({})
+        const totalData = allorders.length;
+        const orders = await RequestOrder.find({adminId:adminId}).sort({_id:-1}).skip(offset)
+        .limit(limit)
+
+        if(orders.length===0){
+            return res.status(400).send({success:false,message:"No Requests Found"})
+        }
+
+        let arr = orders.map((ele)=>({
+            _id:ele._id,
+            message:ele.message,
+            quantity:ele.quantity,
+            agentId:ele.agentId,
+            agentName:ele.agentname,
+            email:ele.email,
+            phone:ele.phone
+        }))
+
+        return res.status(200).send({success:true,message:"Get all requests",totaldata:totalData,data:arr})
+        
+    } catch (error) {
+         console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+}
+
 module.exports = {
     addVendor,
     addAgent,
@@ -727,5 +808,7 @@ module.exports = {
     viewTransaction,
     barCodeProduct,
     updateVendor,
-    viewVendorAgent
+    viewVendorAgent,
+    requestOrder,
+    getAllRequstedOrders
 }

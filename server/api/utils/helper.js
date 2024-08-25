@@ -8,6 +8,8 @@ const Shops = require('../models/shop.model.js');
 const Vendor = require("../models/vendor.model.js")
 const Agent = require("../models/agent.model.js")
 const Distribute = require('../models/distribute-order.model.js')
+const RequestOrder = require('../models/requestorder.model.js')
+
 
 const CheckoutAdress = require('../models/checkoutadress.model')
 const bwipjs = require('bwip-js');
@@ -62,6 +64,11 @@ const getNextSequentialId = async (ids) => {
     idPrefix = "TRANS";
     lastId = await Distribute.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.transaction_id ? lastId.transaction_id : "");
+  }
+  if(ids==="REQ"){
+    idPrefix = "REQ";
+    lastId = await RequestOrder.findOne().sort({ _id: -1 });
+    existingIds.push(lastId && lastId.reqId ? lastId.reqId : "");
   }
   // Uncomment the else block if needed
   // else {
