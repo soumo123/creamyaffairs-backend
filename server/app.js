@@ -78,8 +78,8 @@ app.use("/api/v1/checkout",checkouts)
 app.use("/api/v1/orders",orders)
 app.use("/api/v1/inventory",vendorsagents)
 
-// productExpiry()
-// sendNotification()
+productExpiry()
+sendNotification()
 app.get('/',function(req,res){
   res.set('Content-type', 'text/html;charset=utf-8');
   res.send(`
