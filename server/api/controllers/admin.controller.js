@@ -673,7 +673,47 @@ const getTax = async (req, res) => {
 
 const adminSignin = async (req, res) => {
 
+    const {email,password} = req.body
+
     try {
+        if (!email || !password) {
+            return res.status(400).send({ message: "Email or Password is missing", success: false });
+        }
+        const user = await Admin.findOne({ email }).select('+password')
+
+        if (!user) {
+            return res.status(400).send({ message: "Invalid email or password", success: false })
+        }
+        const isPasswordMatch = await checkPassword(password, user.password);
+        console.log(isPasswordMatch);
+
+        if (!isPasswordMatch) {
+            return res.status(400).send({ message: "Invalid email Or password", success: false })
+        }
+
+        const jwtTokenObject = {
+            _id: user._id,
+            adminId: user.adminId,
+            email: user.email,
+            image: user.image,
+            mobile: user.phone,
+
+        }
+
+        const jwtToken = jwt.sign(jwtTokenObject, process.env.JWT_SECRET_KEY, {
+            expiresIn: process.env.JWT_EXPIRE
+        })
+
+
+
+        return res.status(200).send({
+            success: true,
+            message: "Admin Details",
+            token: jwtToken,
+            user: jwtTokenObject
+        })
+
+
 
 
 
@@ -683,6 +723,7 @@ const adminSignin = async (req, res) => {
     }
 
 }
+
 
 
 
