@@ -86,7 +86,8 @@ const sendNotification = async () => {
                     $match: {
                         "weight.stock": { $lte: 4 },
                         active: 1,
-                        expired: false
+                        expired: false,
+                        process:0
                     }
                 },
                 {
@@ -97,6 +98,8 @@ const sendNotification = async () => {
                         productId: "$productId",
                         weight: "$weight.weight",
                         stock: "$weight.stock",
+                        price:"$weight.price",
+                        purchaseprice:"$weight.purchaseprice",
                         unit: "$unit",
                         adminId:"$adminId",
                         type:"$type"
@@ -104,12 +107,14 @@ const sendNotification = async () => {
                 }
             ])
 
+            
+
             console.log("stockProducts", stockProducts)
             if (expiryproducts.length > 0) {
                 console.log("Crone Start For Expiry Products-------------------------");
                 for (let ele of expiryproducts) {
                     let checkTime = checkExpiry(ele.expiry_date)
-
+                    
                     await Notification.create({
                         productId: ele.productId,
                         adminId:ele.adminId,
@@ -125,13 +130,19 @@ const sendNotification = async () => {
                 for (let ele of stockProducts) {
                     await Notification.create({
                         productId: ele.productId,
+                        productname: ele.productname,
+                        weight:ele.weight,
+                        stock:ele.stock,
+                        price:ele.price,
+                        purchaseprice:ele.purchaseprice,
                         adminId:ele.adminId,
                         agentId:ele.agentId,
                         type:ele.type,
                         notification_type:2,
-                        productname: ele.productname,
                         message: `${ele.productname} of weight ${ele.weight} ${ele.unit} have only ${ele.stock} items left`
                     })
+
+                    await Products.updateOne({productId:ele.productId},{$set:{process:1}})
                 }
             }
 

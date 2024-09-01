@@ -123,6 +123,8 @@ const addAgent = async (req, res) => {
             });
         }
 
+        const vendordata = await Vendor.findOne({vendorId:vendor_id})
+
         // Access the buffer property of req.file
         const fileBuffer = file.buffer;
         const bucketName = process.env.S3_BUCKT_NAME;
@@ -133,7 +135,7 @@ const addAgent = async (req, res) => {
         const lastId = await getNextSequentialId("AGENT")
 
         const agent = await Agent.create({
-            agentId: lastId, name, email, phone, address, image: s3Url, shopId: shop_id, vendorId: vendor_id
+            agentId: lastId, name, email, phone, address, image: s3Url, shopId: shop_id, vendorId: vendor_id , vendorname:vendordata.name
         })
         
         const result = await Expire.create({agentId:lastId,agentname:name,shopid:shop_id})
@@ -315,7 +317,7 @@ const addInventory = async (req, res) => {
                 })
             })
         }
-
+        console.log("json--add vendor products",json)
         json = {
             transaction_id: transctionId,
             distributorId: agentId,
@@ -344,6 +346,9 @@ const addInventory = async (req, res) => {
 const getTransctions = async (req, res) => {
     try {
         const { shop_id, agentId } = req.query;
+        let totalUnpaidAmount = 0;
+        let totalPaidAmount = 0;
+        let totalAmount = 0;
         if (!shop_id || !agentId) {
             return res.status(400).send({ message: "Missing fields", success: false });
         }
@@ -356,6 +361,10 @@ const getTransctions = async (req, res) => {
         let totalUenpaidTransaction = transactions && transactions.filter((ele)=>{
             return ele.paid===false
         })
+        totalAmount = transactions.reduce((sum, transaction) => sum + transaction.totalAmount, 0)
+        totalPaidAmount = transactions.reduce((sum, transaction) => sum + transaction.pay, 0);
+        totalUnpaidAmount = totalAmount - totalPaidAmount
+
         let totalPaidTransaction = transactions && transactions.filter((ele)=>{
             return ele.paid===true
         })
@@ -371,7 +380,11 @@ const getTransctions = async (req, res) => {
                 lastTransaction: lastTransaction || null,
                 remainingTransactions: remainingTransactions,
                 totalUenpaidTransaction:totalUenpaidTransaction.length,
-                totalPaidTransaction:totalPaidTransaction.length
+                totalPaidTransaction:totalPaidTransaction.length,
+                totalAmount:totalAmount,
+                totalUnpaidAmount:totalUnpaidAmount,
+                totalPaidAmount:totalPaidAmount
+
             }
         });
 
@@ -517,33 +530,49 @@ const updateStock = async (req, res) => {
 
 
         for (let ele of savedProducts) {
-            let lastId = ele.productId;
+            console.log("elee",ele)
+            const product = await Product.findOne({ productId: ele.productId, type: Number(type), adminId: adminId });
 
-            const update = await Product.updateOne({ productId: ele.productId, type: Number(type), adminId: adminId }, { $set: { weight: ele.weights ,manufacture_date:ele.manufacture_date,expiry_date:ele.expiry_date,expired:false} })
-
-            const expiryres = await Expire.updateOne(
-                { 
-                    shop_id: shop_id, 
-                    "productId": ele.productId
-                },
-                { 
-                    $pull: { 
-                        productId: ele.productId
+            if (product) {
+                const updatedWeights = product.weight.map(w => {
+                    const matchingWeight = ele.weights.find(ew => ew.weight === w.weight);
+                    if (matchingWeight) {
+                        return {
+                            ...w,
+                            stock: w.stock + matchingWeight.stock
+                        };
                     }
-                }
-            
-            )
+                    return w;
+                });
 
-            ele.weights.forEach((uu) => {
-                totalPrice += uu.purchaseprice * uu.stock
-                resultArray.push({
-                    productId: lastId,
-                    quantity: Number(uu.stock),
-                    weight: uu.weight,
-                    price: Number(uu.purchaseprice)
-                })
-            })
+                const newWeights = ele.weights.filter(ew => !product.weight.some(w => w.weight === ew.weight));
 
+                const finalWeights = updatedWeights.concat(newWeights);
+
+                await Product.updateOne(
+                    { productId: ele.productId, type: Number(type), adminId: adminId },
+                    {
+                        $set: {
+                            weight: finalWeights,
+                            manufacture_date: ele.manufacture_date,
+                            expiry_date: ele.expiry_date,
+                            expired: false
+                        }
+                    }
+                );
+
+                ele.weights.forEach((uu) => {
+                    totalPrice += uu.purchaseprice * uu.stock;
+                    resultArray.push({
+                        productId: ele.productId,
+                        quantity: Number(uu.stock),
+                        weight: uu.weight,
+                        price: Number(uu.purchaseprice)
+                    });
+                });
+            }
+
+            await RequestOrder.deleteOne({reqId:ele.reqId})
         }
 
         let concatinateArray = resultArray.concat(addedArray)
@@ -735,12 +764,19 @@ const requestOrder = async(req,res)=>{
         const result = await RequestOrder.create({
             adminId:adminId,
             reqId:lastId,
-            agentId:body.agentId,
+            agentInfo:{
+                agentId:body.agentId,
+                agentname:body.agentname,
+                email:body.email,
+                phone:body.phone,
+            },
             shopId:shop_id,
-            quantity:body.quantity,
-            agentname:body.agentname,
-            email:body.email,
-            phone:body.phone,
+            productId:body.productId,
+            productname:body.productname,
+            weight:body.weight,
+            stock:body.stock,
+            price:body.price,
+            purchaseprice:body.purchaseprice,
             message:body.message
         })
 
@@ -781,11 +817,9 @@ const getAllRequstedOrders = async(req,res)=>{
         let arr = orders.map((ele)=>({
             _id:ele._id,
             message:ele.message,
-            quantity:ele.quantity,
-            agentId:ele.agentId,
-            agentName:ele.agentname,
-            email:ele.email,
-            phone:ele.phone
+            agentInfo:ele.agentInfo,
+            quantity:ele.stock,
+            
         }))
 
         return res.status(200).send({success:true,message:"Get all requests",totaldata:totalData,data:arr})
@@ -795,6 +829,99 @@ const getAllRequstedOrders = async(req,res)=>{
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
     }
 }
+
+
+const searchagentandvendors = async(req,res)=>{
+
+    const{adminId,key} = req.query
+
+    try {
+        
+        if(!adminId || !key){
+            return res.status(400).send({success:false,message:"Missing creendentials"})
+        }
+        
+        const result =  await Agent.find({$or: [
+            { vendorname: { $regex: key, $options: 'i' } },
+            { name: { $regex: key, $options: 'i' } }
+          ]})
+
+
+          if(result.length===0){
+            return res.status(400).send({success:false,message:"No Vendor or Agent Found"})
+          }
+
+          const response = result.map((ele)=>({
+            title:`${ele.name} (${ele.agentId}) from ${ele.vendorname} (${ele.vendorId})`,
+            value:ele.agentId,
+            label:ele.vendorId
+          }))
+
+          return res.status(200).send({success:true,message:"Get all results",data:response})
+
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });  
+    }
+}
+
+
+const getReqordersSpecificAgents = async(req,res)=>{
+
+    const {adminId,agentId} = req.query
+
+    try {
+
+        if(!adminId || !agentId){
+            return res.status(400).send({success:false,message:"Missing creendentials"})
+        }
+
+        const reqorders =  await RequestOrder.aggregate([
+            {
+                $match:{
+                    "agentInfo.agentId": agentId,
+                    adminId:adminId
+                }
+            },
+
+            {
+              $group: {
+                _id: {
+                  agentId: "$agentInfo.agentId",
+                  reqId: "$reqId",
+                  productId: "$productId",
+                  productname: "$productname"
+                },
+                weights: {
+                  $push: {
+                    weight: "$weight",
+                    price: "$price",
+                    stock: "$stock",
+                    purchaseprice: "$purchaseprice"
+                  }
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                productId: "$_id.productId",
+                productname: "$_id.productname",
+                reqId:"$_id.reqId",
+                weight: "$weights"
+              }
+            }
+          ])
+          console.log("reqorders",reqorders)
+        return res.status(200).send({succeeded:true,message:"Get Data",data:reqorders})
+        
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack }); 
+    }
+}
+
 
 module.exports = {
     addVendor,
@@ -810,5 +937,7 @@ module.exports = {
     updateVendor,
     viewVendorAgent,
     requestOrder,
-    getAllRequstedOrders
+    getAllRequstedOrders,
+    searchagentandvendors,
+    getReqordersSpecificAgents
 }

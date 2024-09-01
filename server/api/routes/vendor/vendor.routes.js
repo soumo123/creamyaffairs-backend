@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { addVendor,addAgent, getAllVendors, getallAgents, addInventory, getTransctions, updateStock, updateMoney, viewTransaction, barCodeProduct,viewVendorAgent, requestOrder, getAllRequstedOrders} = require('../../controllers/vendor-agents.controller.js');
+const { addVendor,addAgent, getAllVendors, getallAgents, addInventory, getTransctions, updateStock, updateMoney, viewTransaction, barCodeProduct,viewVendorAgent, requestOrder, getAllRequstedOrders, searchagentandvendors, getReqordersSpecificAgents} = require('../../controllers/vendor-agents.controller.js');
 const {ensureAuthenticated} = require('../../middleware/jwtVerify.js')
 const multer = require('multer');
 
@@ -27,4 +27,8 @@ router.get('/view_agent_vendor',viewVendorAgent)
 router.post("/req_order",requestOrder)
 router.get("/get_re_orders",getAllRequstedOrders)
 
+router.get("/search_vendor",searchagentandvendors)
+
+
+router.get("/get_req_orders_agents",getReqordersSpecificAgents)
 module.exports = router

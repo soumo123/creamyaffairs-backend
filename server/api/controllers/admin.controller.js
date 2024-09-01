@@ -758,6 +758,12 @@ const getAllNotifications = async (req, res) => {
         let arr = result.map((ele) => ({
             _id: ele._id,
             message: ele.message,
+            productId:ele.productId,
+            productname:ele.productname,
+            weight:ele.weight,
+            stock:ele.stock,
+            price:ele.price,
+            purchaseprice:ele.purchaseprice,
             noti_type: ele.notification_type,
             agent_details:mp.get(ele.agentId)
         }))

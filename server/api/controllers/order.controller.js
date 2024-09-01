@@ -48,6 +48,27 @@ const createOrder = async (req, res) => {
                 }
             );
 
+            // Check if the stock of the product's specific weight is 4, then update process
+            const product = await Product.findOne(
+                {
+                    productId: productId,
+                    'weight.weight': weight,
+                    'weight.stock': 4
+                }
+            );
+
+            if (product) {
+                await Product.updateOne(
+                    { 
+                        productId: productId
+                    },
+                    { 
+                        $set: { process: 0 }
+                    }
+                );
+            }
+
+
             await  Whishlists.updateOne(
                 { 
                     productId: productId, 
@@ -105,13 +126,19 @@ const getAllOrders = async (req, res) => {
 
     try {
         let orders = undefined;
-        let { status, shopId, type, key, userId ,limit,offset} = req.query;
+        let ordermethod=[];
+        let { status, shopId, type, key, userId ,limit,offset,ordertype} = req.query;
         limit = parseInt(limit)
         offset = parseInt(offset)
-
+        
+        if(ordertype === "") {
+            ordermethod = ["direct","ordered"]
+        }else{
+            ordermethod.push(ordertype)
+        }
 
         if (status) {
-            orders = await Order.find({ shop_id: shopId, type: type, status: {$in:[0,-1,1,2,3,4]}, orderId: { $regex: key, $options: 'i' } }).sort({ _id: -1 })      
+            orders = await Order.find({ shop_id: shopId, type: type, order_method:{$in:ordermethod},status: {$in:[0,-1,1,2,3,4]}, orderId: { $regex: key, $options: 'i' } }).sort({ _id: -1 })      
             .skip(offset)
             .limit(limit);
         } else {
@@ -120,7 +147,7 @@ const getAllOrders = async (req, res) => {
             .limit(limit);
         }
 
-        let totalData = await Order.find({ shop_id: shopId, type: type}).count()
+        let totalData = await Order.find({ shop_id: shopId, type: type,order_method:{$in:ordermethod}}).count()
 
         return res.status(200).send({ success: true, totalData:totalData,data: orders })
 

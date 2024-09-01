@@ -10,6 +10,10 @@ const agentSchema = new mongoose.Schema({
         type:String,
         required:true
     },
+    vendorname:{
+        type:String,
+        required:true
+    },
     shopId:{
         type:String,
         required:true

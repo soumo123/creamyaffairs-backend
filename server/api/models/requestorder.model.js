@@ -10,32 +10,35 @@ const requestSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    agentId:{
-        type:String,
+    agentInfo:{
+        type:Object,
         required:true
     },
+
     shopId:{
         type:String,
         required:true
     },
-    agentname: {
-        type: String,
-        required: true
-    },
-    email: {
-        type: String,
-        required: true
-    },
-    phone: {
-        type: String,
-        required: true
-    },
     message:{
         type:String
     },
-    quantity:{
-        type:Number,
-        required: true
+    productId:{
+        type:String,
+    },
+    productname:{
+        type:String
+    },
+    weight: {
+        type: Number
+    },
+    stock: {
+        type: Number
+    },
+    price: {
+        type: Number
+    },
+    purchaseprice: {
+        type: Number
     },
     created_at: {
         type: Date,
