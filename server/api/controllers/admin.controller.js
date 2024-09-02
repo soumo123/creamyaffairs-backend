@@ -818,4 +818,30 @@ const countNotification = async (req, res) => {
     }
 }
 
-module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, updateTax, getTax, getAllNotifications, updateNotification, countNotification, adminSignin }
+const deleteNotification = async(req, res) => {
+
+    let {adminId,id,type} = req.query
+    type = parseInt(type)
+    let query = undefined
+    try {
+
+        if(!adminId){
+            return res.status(400).send({ success: false, message: "Missing Credentials" })
+        }
+        if(type===1){
+            query = {adminId:adminId,_id:id}
+        }else if(type===2){
+            query = {adminId:adminId}
+        }
+        const deletedata = await Notification.deleteMany(query)
+
+        return res.status(200).send({success:true,message:"Notification Deleted Successfully"})
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+}
+
+module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, updateTax, getTax, getAllNotifications, updateNotification, countNotification, adminSignin,deleteNotification }
