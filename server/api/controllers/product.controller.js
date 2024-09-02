@@ -889,56 +889,108 @@ const adminProducts = async (req, res) => {
     const keyword = req.query.keyword;
     const startPrice = Number(req.query.startprice);
     const lastPrice = Number(req.query.lastprice);
-    console.log("startPrice , lastPrice", startPrice, lastPrice)
+    const limit = Number(req.query.limit);
+    const offset = Number(req.query.offset);
+    const expired  = req.query.expired
+
+
+    let expiremthods = [];
+
+    if(expired ==="" ){
+        expiremthods.push(true,false)
+    }else{
+        if(expired==="false"){
+            expiremthods.push(false)
+        }else{
+            expiremthods.push(true)
+            
+        }
+    }
+
+    console.log("expiremthods-----------", expiremthods)
     try {
-        let query = { adminId: adminId, type: type }
+        let query = { adminId: adminId, type: type,expired:{$in:expiremthods} }
         if (!keyword && !startPrice && !lastPrice) {
             // 1. If no keyword and no startprice and lastprice, then get all products
             query = query
         } else if (keyword && !startPrice && !lastPrice) {
             // 2. If keyword present but startprice and last price missing, then get all products by matching keyword
-            query = { ...query, searchstring: { $regex: keyword, $options: 'i' } };
+            query = { ...query, searchstring: { $regex: keyword, $options: 'i' },expired:{$in:expiremthods} };
 
         } else if (keyword && startPrice && lastPrice) {
             // 3. If keyword present and also startprice and last price present, then get all products by matching keyword and price
             query = {
                 ...query,
                 searchstring: { $regex: keyword, $options: 'i' },
-                price: { $gte: startPrice, $lte: lastPrice }
-            };
+                expired:{$in:expiremthods},
+                weight: {
+                    "$elemMatch": {
+                        "price": {
+                            "$gte": startPrice,
+                            "$lte": lastPrice
+                        }
+                    }
+                }
+            }
             console.log("Getting products by keyword and price...");
         } else if (!keyword && startPrice && lastPrice) {
             // 4. If keyword not present but startprice and last price present, then get all products by matching price
             query = {
                 ...query,
-                price: { $gte: startPrice, $lte: lastPrice }
+                expired:{$in:expiremthods},
+                weight: {
+                    "$elemMatch": {
+                        "price": {
+                            "$gte": startPrice,
+                            "$lte": lastPrice
+                        }
+                    }
+                }
             };
             console.log("Getting products by price...");
         } else if (startPrice && !lastPrice) {
             // 5. If only startprice present, then get all products with price greater than or equal to startprice
             query = {
                 ...query,
-                price: { $gte: startPrice }
+                expired:{$in:expiremthods},
+                weight: {
+                    "$elemMatch": {
+                        "price": {
+                            "$gte": startPrice,
+                            // "$lte": lastPrice
+                        }
+                    }
+                }
             };
             console.log("Getting products with price greater than or equal to start price...");
         } else if (!startPrice && lastPrice) {
             // 6. If only lastprice present, then get all products with price less than or equal to lastprice
             query = {
                 ...query,
-                price: { $lte: lastPrice }
+                expired:{$in:expiremthods},
+                weight: {
+                    "$elemMatch": {
+                        "price": {
+                            // "$gte": startPrice,
+                            "$lte": lastPrice
+                        }
+                    }
+                }
             };
             console.log("Getting products with price less than or equal to last price...");
         } else {
             return res.status(400).send({ message: "Invalid combination of parameters." });
         }
+        const products = await Product.find(query).sort({ _id: -1 }).skip(offset)
+            .limit(limit);
+        const totalData = await Product.find({ type: type, adminId: adminId ,expired:{$in:expiremthods}}).sort({ _id: -1 }).count();
 
-        const products = await Product.find(query).sort({ _id: -1 });
 
         if (products.length === 0) {
             return res.status(404).send({ message: "Get All Products", data: [] })
         }
 
-        return res.status(200).send({ message: "Get All Products", data: products })
+        return res.status(200).send({ message: "Get All Products", totalData: totalData, data: products })
 
 
     } catch (error) {
@@ -947,7 +999,6 @@ const adminProducts = async (req, res) => {
     }
 
 }
-
 //Delete Product By Admin ///
 
 
