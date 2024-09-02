@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { signIn, signUp,getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, getAdmin, createShop, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, getTax, updateTax,getAllNotifications,updateNotification, countNotification ,adminSignin} = require('../../controllers/admin.controller.js');
+const { signIn, signUp,getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, getAdmin, createShop, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, getTax, updateTax,getAllNotifications,updateNotification, countNotification ,adminSignin,deleteNotification} = require('../../controllers/admin.controller.js');
 const {ensureAuthenticated} = require('../../middleware/jwtVerify.js')
 const multer = require('multer');
 
@@ -44,5 +44,6 @@ router.get('/count_notification',countNotification)
 //admin sign in//
 
 router.post('/signinadmin',adminSignin)
+router.delete('/delete_notification',deleteNotification)
 
 module.exports = router
