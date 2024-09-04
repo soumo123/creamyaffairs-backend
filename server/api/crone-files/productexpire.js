@@ -29,7 +29,7 @@ const productExpiry = async () => {
 
                 for (let ele of products) {
                     await Expiry.updateOne(
-                        { agendtId: ele.agentId },
+                        { agentId: ele.agentId },
                         {
                             $addToSet: {
                                 productId: {
