@@ -183,21 +183,21 @@ const generateAndUploadBarcode = (productId)=>{
           scale:       3,               // 3x scaling factor
           height:      20,              // Bar height, in millimeters
           includetext: true,            // Show human-readable text
-      }, (err, png) => {
+      },async (err, png) => {
           if (err) return reject(err);
           
           const fileName = `${productId}.png`;
-          const filePath = path.join(__dirname, fileName);
+          // const filePath = path.join(__dirname, fileName);
           const bucketName = process.env.S3_BUCKT_NAME;
 
-          fs.writeFile(filePath, png, async (err) => {
-              if (err) return reject(err);
+          // fs.writeFile(filePath, png, async (err) => {
+          //     if (err) return reject(err);
               
               // Upload to S3
-              const fileStream = fs.createReadStream(filePath);
-              const barUrl = await uploadFileToS3(bucketName, fileName, fileStream);
+              // const fileStream = fs.createReadStream(filePath);
+              const barUrl = await uploadFileToS3(bucketName, fileName, png);
               resolve(barUrl); 
-          });
+          // });
       });
   });
     
