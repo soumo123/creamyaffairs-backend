@@ -18,6 +18,7 @@ const addVendor = async (req, res) => {
     try {
         let { name, email, phone } = req.body;
         const shop_id = req.query.shop_id;
+        name = name.replace(/\s+/g, '');
         const file = req.file;
 
         if (!name || !email || !phone) {
@@ -30,10 +31,20 @@ const addVendor = async (req, res) => {
             return res.status(400).json({ error: 'Invalid request' });
         }
 
-        const emailData = await Vendor.find({ email: email });
-        if (emailData.length > 0) {
+        const emailData = await Vendor.find({ $or:[{email: email},{name: name}] });
+        if (emailData.email === email) {
             return res.status(400).send({
                 message: 'Email already present'
+            });
+        }
+        if (emailData.name === name) {
+            return res.status(400).send({
+                message: 'This Name of Vendor already exist'
+            });
+        }
+        if (emailData.phone === phone) {
+            return res.status(400).send({
+                message: 'This Number already exist'
             });
         }
 
@@ -58,7 +69,6 @@ const addVendor = async (req, res) => {
     }
 
 }
-
 
 const updateVendor = async(req,res)=>{
 
@@ -104,6 +114,7 @@ const addAgent = async (req, res) => {
     try {
         let { name, email, phone, address } = req.body;
         const { shop_id, vendor_id } = req.query;
+        name = name.replace(/\s+/g, '');
         const file = req.file;
 
         if (!name || !email || !phone || !address) {
@@ -116,10 +127,20 @@ const addAgent = async (req, res) => {
             return res.status(400).json({ error: 'Invalid request' });
         }
 
-        const emailData = await Agent.find({ email: email });
-        if (emailData.length > 0) {
+        const emailData = await Agent.findOne({ $or:[{email: email},{name: name}] });
+        if (emailData.email === email) {
             return res.status(400).send({
                 message: 'Email already present'
+            });
+        }
+        if (emailData.name === name) {
+            return res.status(400).send({
+                message: 'This Name already exist'
+            });
+        }
+        if (emailData.phone === phone) {
+            return res.status(400).send({
+                message: 'This Number already exist'
             });
         }
 
@@ -148,7 +169,6 @@ const addAgent = async (req, res) => {
 
 
 }
-
 
 const getAllVendors = async (req, res) => {
 
