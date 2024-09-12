@@ -18,7 +18,7 @@ const addVendor = async (req, res) => {
     try {
         let { name, email, phone } = req.body;
         const shop_id = req.query.shop_id;
-        name = name.replace(/\s+/g, '');
+        name = name.trim();
         const file = req.file;
 
         if (!name || !email || !phone) {
@@ -31,22 +31,38 @@ const addVendor = async (req, res) => {
             return res.status(400).json({ error: 'Invalid request' });
         }
 
-        const emailData = await Vendor.find({ $or:[{email: email},{name: name}] });
-        if (emailData.email === email) {
+        const [emailData, nameData, phoneData] = await Promise.all([
+            Vendor.findOne({ email: email }),
+            Vendor.findOne({ name: name }),
+            Vendor.findOne({ phone: phone }),
+        ]);
+          // Email check
+          if (emailData) {
             return res.status(400).send({
                 message: 'Email already present'
             });
         }
-        if (emailData.name === name) {
+
+        // Name check
+        if (nameData) {
             return res.status(400).send({
-                message: 'This Name of Vendor already exist'
+                message: 'This Name already exists'
             });
         }
-        if (emailData.phone === phone) {
+
+        // Phone check
+        if (phoneData) {
             return res.status(400).send({
-                message: 'This Number already exist'
+                message: 'This Number already exists'
             });
         }
+
+
+
+
+
+
+
 
         // Access the buffer property of req.file
         const fileBuffer = file.buffer;
@@ -70,41 +86,41 @@ const addVendor = async (req, res) => {
 
 }
 
-const updateVendor = async(req,res)=>{
+const updateVendor = async (req, res) => {
 
-    const {vendorId,shopId} = req.query;
-    const body  = req.body;
+    const { vendorId, shopId } = req.query;
+    const body = req.body;
     const file = req.file;
     let json = undefined
 
     try {
 
-        if(!vendorId && !body){
-            return res.status(400).send({message:"Missing credentials",success:false})
+        if (!vendorId && !body) {
+            return res.status(400).send({ message: "Missing credentials", success: false })
         }
 
 
-        if(file){
+        if (file) {
             const fileBuffer = file.buffer;
             const bucketName = process.env.S3_BUCKT_NAME;
             const key = file.originalname;
             const s3Url = await uploadFileToS3(bucketName, key, fileBuffer);
 
             json = {
-                vendorId:vendorId,
-                shopId:shopId,
-                name:body.name,
-                email:body.email,
-                phone:body.phone,
-                image:s3Url,
-                role:"2",
+                vendorId: vendorId,
+                shopId: shopId,
+                name: body.name,
+                email: body.email,
+                phone: body.phone,
+                image: s3Url,
+                role: "2",
             }
         }
-        
+
 
 
     } catch (error) {
-         console.log(error.stack);
+        console.log(error.stack);
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
     }
 
@@ -114,7 +130,7 @@ const addAgent = async (req, res) => {
     try {
         let { name, email, phone, address } = req.body;
         const { shop_id, vendor_id } = req.query;
-        name = name.replace(/\s+/g, '');
+        name = name.trim();
         const file = req.file;
 
         if (!name || !email || !phone || !address) {
@@ -127,24 +143,33 @@ const addAgent = async (req, res) => {
             return res.status(400).json({ error: 'Invalid request' });
         }
 
-        const emailData = await Agent.findOne({ $or:[{email: email},{name: name}] });
-        if (emailData.email === email) {
+        const [emailData, nameData, phoneData, vendordata] = await Promise.all([
+            Agent.findOne({ email: email }),
+            Agent.findOne({ name: name }),
+            Agent.findOne({ phone: phone }),
+            Vendor.findOne({ vendorId: vendor_id })
+        ]);
+          // Email check
+          if (emailData) {
             return res.status(400).send({
                 message: 'Email already present'
             });
         }
-        if (emailData.name === name) {
+
+        // Name check
+        if (nameData) {
             return res.status(400).send({
-                message: 'This Name already exist'
-            });
-        }
-        if (emailData.phone === phone) {
-            return res.status(400).send({
-                message: 'This Number already exist'
+                message: 'This Name already exists'
             });
         }
 
-        const vendordata = await Vendor.findOne({vendorId:vendor_id})
+        // Phone check
+        if (phoneData) {
+            return res.status(400).send({
+                message: 'This Number already exists'
+            });
+        }
+
 
         // Access the buffer property of req.file
         const fileBuffer = file.buffer;
@@ -156,10 +181,10 @@ const addAgent = async (req, res) => {
         const lastId = await getNextSequentialId("AGENT")
 
         const agent = await Agent.create({
-            agentId: lastId, name, email, phone, address, image: s3Url, shopId: shop_id, vendorId: vendor_id , vendorname:vendordata.name
+            agentId: lastId, name, email, phone, address, image: s3Url, shopId: shop_id, vendorId: vendor_id, vendorname: vendordata.name
         })
-        
-        const result = await Expire.create({agentId:lastId,agentname:name,shopid:shop_id})
+
+        const result = await Expire.create({ agentId: lastId, agentname: name, shopid: shop_id })
 
         return res.status(201).send({ message: "Agent Added", success: true })
     } catch (error) {
@@ -271,12 +296,12 @@ const addInventory = async (req, res) => {
             let lastId = await getNextSequentialId("PD")
 
             const barcodeUrl = await generateAndUploadBarcode(lastId);
-            console.log("barcodeUrl",barcodeUrl)
+            console.log("barcodeUrl", barcodeUrl)
             json = {
                 productId: lastId,
                 shop_id: Number(shop_id),
                 type: Number(type),
-                agentId:agentId,
+                agentId: agentId,
                 name: ele.productName,
                 description: "",
                 other_description1: "",
@@ -302,7 +327,7 @@ const addInventory = async (req, res) => {
                 isOffered: false,
                 isTopSelling: false,
                 isBranded: false,
-                barcodeUrl:barcodeUrl,
+                barcodeUrl: barcodeUrl,
                 // discount: 0,
                 // actualpricebydiscount: 0,
                 ratings: 0,
@@ -320,14 +345,14 @@ const addInventory = async (req, res) => {
                 whishListIds: [],
                 reviews: [],
                 active: 0,
-                manufacture_date:ele.manufacture_date,
-                expiry_date:ele.expiry_date
+                manufacture_date: ele.manufacture_date,
+                expiry_date: ele.expiry_date
             }
 
             await Product.create(json)
 
             ele.weights.forEach((uu) => {
-                console.log("uu",uu)
+                console.log("uu", uu)
                 totalPrice += uu.purchaseprice * uu.stock
                 resultArray.push({
                     productId: lastId,
@@ -337,7 +362,7 @@ const addInventory = async (req, res) => {
                 })
             })
         }
-        console.log("json--add vendor products",json)
+        console.log("json--add vendor products", json)
         json = {
             transaction_id: transctionId,
             distributorId: agentId,
@@ -374,19 +399,19 @@ const getTransctions = async (req, res) => {
         }
 
         // Fetch all transactions with only the required fields, sorted by order_date
-        const transactions = await Distribute.find({ shopOwnerId: shop_id, distributorId: agentId})
+        const transactions = await Distribute.find({ shopOwnerId: shop_id, distributorId: agentId })
             .select('_id transaction_id distributorId vendorId distributorName paid totalAmount pay balance order_date')
             .sort({ order_date: -1 });
 
-        let totalUenpaidTransaction = transactions && transactions.filter((ele)=>{
-            return ele.paid===false
+        let totalUenpaidTransaction = transactions && transactions.filter((ele) => {
+            return ele.paid === false
         })
         totalAmount = transactions.reduce((sum, transaction) => sum + transaction.totalAmount, 0)
         totalPaidAmount = transactions.reduce((sum, transaction) => sum + transaction.pay, 0);
         totalUnpaidAmount = totalAmount - totalPaidAmount
 
-        let totalPaidTransaction = transactions && transactions.filter((ele)=>{
-            return ele.paid===true
+        let totalPaidTransaction = transactions && transactions.filter((ele) => {
+            return ele.paid === true
         })
 
 
@@ -399,11 +424,11 @@ const getTransctions = async (req, res) => {
             data: {
                 lastTransaction: lastTransaction || null,
                 remainingTransactions: remainingTransactions,
-                totalUenpaidTransaction:totalUenpaidTransaction.length,
-                totalPaidTransaction:totalPaidTransaction.length,
-                totalAmount:totalAmount,
-                totalUnpaidAmount:totalUnpaidAmount,
-                totalPaidAmount:totalPaidAmount
+                totalUenpaidTransaction: totalUenpaidTransaction.length,
+                totalPaidTransaction: totalPaidTransaction.length,
+                totalAmount: totalAmount,
+                totalUnpaidAmount: totalUnpaidAmount,
+                totalPaidAmount: totalPaidAmount
 
             }
         });
@@ -428,9 +453,9 @@ const updateMoney = async (req, res) => {
         const isValid = await Distribute.findOne({ shopOwnerId: shop_id, transaction_id: transaction_id, distributorId: agentId })
 
         let totalAmount = isValid.totalAmount;
-        let currentPay = isValid.pay +  Number(pay)
+        let currentPay = isValid.pay + Number(pay)
         let balance = Number(totalAmount) - Number(currentPay)
-        if(totalAmount===currentPay){
+        if (totalAmount === currentPay) {
             paid = true
         }
 
@@ -441,22 +466,22 @@ const updateMoney = async (req, res) => {
         await Distribute.updateOne({ shopOwnerId: shop_id, transaction_id: transaction_id, distributorId: agentId }, {
             $set: {
                 pay: Number(currentPay),
-                balance:Number(balance),
-                paid:paid
+                balance: Number(balance),
+                paid: paid
             },
             $push: {
                 paymentInfo: {
                     pay: Number(pay),
-                    date: new Date().toISOString() 
+                    date: new Date().toISOString()
                 }
             }
         })
 
-        return res.status(201).send({message:"Transction Updated", succes:true})
+        return res.status(201).send({ message: "Transction Updated", succes: true })
 
     } catch (error) {
         console.error(error.stack);
-        return res.status(500).send({ message: "Internal Server Error", success:false,error: error.stack });
+        return res.status(500).send({ message: "Internal Server Error", success: false, error: error.stack });
     }
 }
 
@@ -530,9 +555,9 @@ const updateStock = async (req, res) => {
                     whishListIds: [],
                     reviews: [],
                     active: 0,
-                    barcodeUrl:barcodeUrl,
-                    manufacture_date:ele.manufacture_date,
-                    expiry_date:ele.expiry_date
+                    barcodeUrl: barcodeUrl,
+                    manufacture_date: ele.manufacture_date,
+                    expiry_date: ele.expiry_date
                 }
                 await Product.create(json)
                 ele.weights.forEach((uu) => {
@@ -550,7 +575,7 @@ const updateStock = async (req, res) => {
 
 
         for (let ele of savedProducts) {
-            console.log("elee",ele)
+            console.log("elee", ele)
             const product = await Product.findOne({ productId: ele.productId, type: Number(type), adminId: adminId });
 
             if (product) {
@@ -592,7 +617,7 @@ const updateStock = async (req, res) => {
                 });
             }
 
-            await RequestOrder.deleteOne({reqId:ele.reqId})
+            await RequestOrder.deleteOne({ reqId: ele.reqId })
         }
 
         let concatinateArray = resultArray.concat(addedArray)
@@ -662,10 +687,10 @@ const viewTransaction = async (req, res) => {
                     price: Number(product.price)
                 });
             } else {
-               
+
                 acc.push({
                     productId: product.productId,
-                    thumbImage:productMap.thumbnailimage || "",
+                    thumbImage: productMap.thumbnailimage || "",
                     unit: productMap.unit,
                     productName: productMap[product.productId] || 'Unknown',  // Include product name
                     weight: [{
@@ -704,64 +729,64 @@ const viewTransaction = async (req, res) => {
 }
 
 
-const barCodeProduct = async(req,res)=>{
+const barCodeProduct = async (req, res) => {
 
-    const productId =  req.params.id
+    const productId = req.params.id
 
     try {
         const product = await Product.findOne({ productId: productId });
-        
+
 
         if (!product) {
             return res.status(404).send('Product not found');
         }
 
         res.render('product.ejs', { product });
-        
+
     } catch (error) {
-        
+
     }
 }
 
-const viewVendorAgent = async(req,res)=>{
+const viewVendorAgent = async (req, res) => {
 
-    const{agentId,vendorId,shop_id,key} = req.query
+    const { agentId, vendorId, shop_id, key } = req.query
     let response = undefined;
     let json;
     try {
-        if(!key){
-            return res.status(400).send({success:false,message:"Missing keys"})
+        if (!key) {
+            return res.status(400).send({ success: false, message: "Missing keys" })
         }
 
-        if(Number(key)===1){
-            response = await Vendor.findOne({vendorId:vendorId,shopId:shop_id})
-            console.log("response",response)
+        if (Number(key) === 1) {
+            response = await Vendor.findOne({ vendorId: vendorId, shopId: shop_id })
+            console.log("response", response)
             json = {
-                id:response.vendorId,
-                name:response.name,
-                email:response.email,
-                phone:response.phone,
-                image:response.image,
+                id: response.vendorId,
+                name: response.name,
+                email: response.email,
+                phone: response.phone,
+                image: response.image,
 
             }
-        }else if(Number(key)===2){
-            response = await Agent.findOne({vendorId:vendorId,shopId:shop_id,agentId:agentId})
+        } else if (Number(key) === 2) {
+            response = await Agent.findOne({ vendorId: vendorId, shopId: shop_id, agentId: agentId })
             json = {
-                id:response.vendorId,
-                ag_id:response.agentId,
-                name:response.name,
-                email:response.email,
-                phone:response.phone,
-                image:response.image,
+                id: response.vendorId,
+                ag_id: response.agentId,
+                name: response.name,
+                email: response.email,
+                phone: response.phone,
+                image: response.image,
 
             }
-        }   
-       
+        }
+
         return res.status(200).send({
-            success:true,
-            data:json
+            success: true,
+            data: json
         })
-    
+
     } catch (error) {
         console.log(error.stack);
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
@@ -769,42 +794,42 @@ const viewVendorAgent = async(req,res)=>{
 }
 
 
-const requestOrder = async(req,res)=>{
+const requestOrder = async (req, res) => {
 
-    let {adminId,shop_id,not_id} = req.query
+    let { adminId, shop_id, not_id } = req.query
     let body = req.body
 
     try {
 
-        if(!adminId || !shop_id) {
-            return res.status(400).send({success:false,message:"Missing creendentials"})
+        if (!adminId || !shop_id) {
+            return res.status(400).send({ success: false, message: "Missing creendentials" })
         }
         const lastId = await getNextSequentialId("REQ")
 
         const result = await RequestOrder.create({
-            adminId:adminId,
-            reqId:lastId,
-            agentInfo:{
-                agentId:body.agentId,
-                agentname:body.agentname,
-                email:body.email,
-                phone:body.phone,
+            adminId: adminId,
+            reqId: lastId,
+            agentInfo: {
+                agentId: body.agentId,
+                agentname: body.agentname,
+                email: body.email,
+                phone: body.phone,
             },
-            shopId:shop_id,
-            productId:body.productId,
-            productname:body.productname,
-            weight:body.weight,
-            stock:body.stock,
-            price:body.price,
-            purchaseprice:body.purchaseprice,
-            message:body.message
+            shopId: shop_id,
+            productId: body.productId,
+            productname: body.productname,
+            weight: body.weight,
+            stock: body.stock,
+            price: body.price,
+            purchaseprice: body.purchaseprice,
+            message: body.message
         })
 
-        const eliminatenotification = await Notification.updateOne({_id:not_id},{$set:{checked:true}})
+        const eliminatenotification = await Notification.updateOne({ _id: not_id }, { $set: { checked: true } })
 
-        return res.status(201).send({success:true,message:"Request Sent"})
+        return res.status(201).send({ success: true, message: "Request Sent" })
 
-        
+
     } catch (error) {
         console.log(error.stack);
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
@@ -813,132 +838,134 @@ const requestOrder = async(req,res)=>{
 }
 
 
-const getAllRequstedOrders = async(req,res)=>{
+const getAllRequstedOrders = async (req, res) => {
 
-    let {adminId,limit,offset} = req.query
+    let { adminId, limit, offset } = req.query
 
     limit = parseInt(limit);
     offset = parseInt(offset)
 
     try {
-        if(!adminId) {
-            return res.status(400).send({success:false,message:"Missing creendentials"})
+        if (!adminId) {
+            return res.status(400).send({ success: false, message: "Missing creendentials" })
         }
 
         const allorders = await RequestOrder.find({})
         const totalData = allorders.length;
-        const orders = await RequestOrder.find({adminId:adminId}).sort({_id:-1}).skip(offset)
-        .limit(limit)
+        const orders = await RequestOrder.find({ adminId: adminId }).sort({ _id: -1 }).skip(offset)
+            .limit(limit)
 
-        if(orders.length===0){
-            return res.status(400).send({success:false,message:"No Requests Found"})
+        if (orders.length === 0) {
+            return res.status(400).send({ success: false, message: "No Requests Found" })
         }
 
-        let arr = orders.map((ele)=>({
-            _id:ele._id,
-            message:ele.message,
-            agentInfo:ele.agentInfo,
-            quantity:ele.stock,
-            
+        let arr = orders.map((ele) => ({
+            _id: ele._id,
+            message: ele.message,
+            agentInfo: ele.agentInfo,
+            quantity: ele.stock,
+
         }))
 
-        return res.status(200).send({success:true,message:"Get all requests",totaldata:totalData,data:arr})
-        
+        return res.status(200).send({ success: true, message: "Get all requests", totaldata: totalData, data: arr })
+
     } catch (error) {
-         console.log(error.stack);
+        console.log(error.stack);
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
     }
 }
 
 
-const searchagentandvendors = async(req,res)=>{
+const searchagentandvendors = async (req, res) => {
 
-    const{adminId,key} = req.query
+    const { adminId, key } = req.query
 
     try {
-        
-        if(!adminId || !key){
-            return res.status(400).send({success:false,message:"Missing creendentials"})
+
+        if (!adminId || !key) {
+            return res.status(400).send({ success: false, message: "Missing creendentials" })
         }
-        
-        const result =  await Agent.find({$or: [
-            { vendorname: { $regex: key, $options: 'i' } },
-            { name: { $regex: key, $options: 'i' } }
-          ]})
+
+        const result = await Agent.find({
+            $or: [
+                { vendorname: { $regex: key, $options: 'i' } },
+                { name: { $regex: key, $options: 'i' } }
+            ]
+        })
 
 
-          if(result.length===0){
-            return res.status(400).send({success:false,message:"No Vendor or Agent Found"})
-          }
+        if (result.length === 0) {
+            return res.status(400).send({ success: false, message: "No Vendor or Agent Found" })
+        }
 
-          const response = result.map((ele)=>({
-            title:`${ele.name} (${ele.agentId}) from ${ele.vendorname} (${ele.vendorId})`,
-            value:ele.agentId,
-            label:ele.vendorId
-          }))
+        const response = result.map((ele) => ({
+            title: `${ele.name} (${ele.agentId}) from ${ele.vendorname} (${ele.vendorId})`,
+            value: ele.agentId,
+            label: ele.vendorId
+        }))
 
-          return res.status(200).send({success:true,message:"Get all results",data:response})
+        return res.status(200).send({ success: true, message: "Get all results", data: response })
 
 
     } catch (error) {
         console.log(error.stack);
-        return res.status(500).send({ message: "Internal Server Error", error: error.stack });  
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
     }
 }
 
 
-const getReqordersSpecificAgents = async(req,res)=>{
+const getReqordersSpecificAgents = async (req, res) => {
 
-    const {adminId,agentId} = req.query
+    const { adminId, agentId } = req.query
 
     try {
 
-        if(!adminId || !agentId){
-            return res.status(400).send({success:false,message:"Missing creendentials"})
+        if (!adminId || !agentId) {
+            return res.status(400).send({ success: false, message: "Missing creendentials" })
         }
 
-        const reqorders =  await RequestOrder.aggregate([
+        const reqorders = await RequestOrder.aggregate([
             {
-                $match:{
+                $match: {
                     "agentInfo.agentId": agentId,
-                    adminId:adminId
+                    adminId: adminId
                 }
             },
 
             {
-              $group: {
-                _id: {
-                  agentId: "$agentInfo.agentId",
-                  reqId: "$reqId",
-                  productId: "$productId",
-                  productname: "$productname"
-                },
-                weights: {
-                  $push: {
-                    weight: "$weight",
-                    price: "$price",
-                    stock: "$stock",
-                    purchaseprice: "$purchaseprice"
-                  }
+                $group: {
+                    _id: {
+                        agentId: "$agentInfo.agentId",
+                        reqId: "$reqId",
+                        productId: "$productId",
+                        productname: "$productname"
+                    },
+                    weights: {
+                        $push: {
+                            weight: "$weight",
+                            price: "$price",
+                            stock: "$stock",
+                            purchaseprice: "$purchaseprice"
+                        }
+                    }
                 }
-              }
             },
             {
-              $project: {
-                _id: 0,
-                productId: "$_id.productId",
-                productname: "$_id.productname",
-                reqId:"$_id.reqId",
-                weight: "$weights"
-              }
+                $project: {
+                    _id: 0,
+                    productId: "$_id.productId",
+                    productname: "$_id.productname",
+                    reqId: "$_id.reqId",
+                    weight: "$weights"
+                }
             }
-          ])
-          console.log("reqorders",reqorders)
-        return res.status(200).send({succeeded:true,message:"Get Data",data:reqorders})
-        
+        ])
+        console.log("reqorders", reqorders)
+        return res.status(200).send({ succeeded: true, message: "Get Data", data: reqorders })
+
     } catch (error) {
         console.log(error.stack);
-        return res.status(500).send({ message: "Internal Server Error", error: error.stack }); 
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
     }
 }
 
