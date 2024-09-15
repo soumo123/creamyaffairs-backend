@@ -4,7 +4,7 @@ const Tags = require('../models/tags.model.js')
 const Whishlists = require('../models/whishlist.model.js')
 const Expiry = require('../models/expiredproducts.model.js')
 const uploadFileToS3 = require('../utils/fileUpload.js')
-const { getNextSequentialId, checkPassword, getLastAndIncrementId ,generateAndUploadBarcode} = require('../utils/helper.js')
+const { getNextSequentialId, checkPassword, getLastAndIncrementId, generateAndUploadBarcode } = require('../utils/helper.js')
 const dotenv = require('dotenv');
 dotenv.config();
 
@@ -161,7 +161,7 @@ const updateProduct = async (req, res, next) => {
         //     actualpricebydiscount = Number(req.body.price) - discountData
         // }
         let searchString = name + description + Number(req.body.price)
-        
+
         let barcodeUrl = await generateAndUploadBarcode(productId);
 
         if (files.length > 0) {
@@ -220,7 +220,7 @@ const updateProduct = async (req, res, next) => {
                 isTopSelling: Boolean(isTopSelling),
                 isBranded: Boolean(isBranded),
                 isOffered: Boolean(isOffered),
-                barcodeUrl:barcodeUrl
+                barcodeUrl: barcodeUrl
             }
             const product = await Product.updateOne({ productId: productId, type: Number(type), adminId: adminId }, { $set: json })
             const weights = JSON.parse(req.body.weight11);
@@ -236,7 +236,7 @@ const updateProduct = async (req, res, next) => {
                     for (const product of cart.products) {
                         if (product.productId === productId && product.weight === weight.weight) {
                             let totalPrice = weight.price * product.itemCount;
-                        
+
                             // Update Cart
                             await Cart.updateMany(
                                 { type: Number(type), "products.productId": productId, "products.weight": weight.weight },
@@ -296,7 +296,7 @@ const updateProduct = async (req, res, next) => {
                     isTopSelling: isTopSelling,
                     isBranded: isBranded,
                     isOffered: isOffered,
-                    barcodeUrl:barcodeUrl
+                    barcodeUrl: barcodeUrl
                 }
             })
 
@@ -313,7 +313,7 @@ const updateProduct = async (req, res, next) => {
                     for (const product of cart.products) {
                         if (product.productId === productId && product.weight === weight.weight) {
                             let totalPrice = weight.price * product.itemCount;
-                        
+
                             // Update Cart
                             await Cart.updateMany(
                                 { type: Number(type), "products.productId": productId, "products.weight": weight.weight },
@@ -428,9 +428,9 @@ const getAllProducts = async (req, res) => {
         }
 
         if (tags.length > 0) {
-            query = { type: type, active: 1, expired:false,selling_price_method: "offline", tags: { $in: tags }, price: { $gte: startPrice, $lte: lastPrice } };
+            query = { type: type, active: 1, expired: false, selling_price_method: "offline", tags: { $in: tags }, price: { $gte: startPrice, $lte: lastPrice } };
         } else {
-            query = { type: type, active: 1, expired:false,selling_price_method: "offline", price: { $gte: startPrice, $lte: lastPrice } };
+            query = { type: type, active: 1, expired: false, selling_price_method: "offline", price: { $gte: startPrice, $lte: lastPrice } };
         }
         if (!type) {
             return res.status(200).send({
@@ -457,32 +457,32 @@ const getAllProducts = async (req, res) => {
             .limit(limit);
 
 
-        const featuredData = await Product.find({ active: 1,expired:false,selling_price_method: "offline", isFeatured: true }).sort({ _id: -1 })
+        const featuredData = await Product.find({ active: 1, expired: false, selling_price_method: "offline", isFeatured: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const bestSellingData = await Product.find({ active: 1,expired:false,selling_price_method: "offline", isBestSelling: true }).sort({ _id: -1 })
+        const bestSellingData = await Product.find({ active: 1, expired: false, selling_price_method: "offline", isBestSelling: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const brandedData = await Product.find({ active: 1, expired:false, selling_price_method: "offline", isBranded: true }).sort({ _id: -1 })
+        const brandedData = await Product.find({ active: 1, expired: false, selling_price_method: "offline", isBranded: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const topSellingData = await Product.find({ active: 1, expired:false, selling_price_method: "offline", isTopSelling: true }).sort({ _id: -1 })
+        const topSellingData = await Product.find({ active: 1, expired: false, selling_price_method: "offline", isTopSelling: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const dealsData = await Product.find({ active: 1, expired:false, selling_price_method: "offline", isOffered: true }).sort({ _id: -1 })
+        const dealsData = await Product.find({ active: 1, expired: false, selling_price_method: "offline", isOffered: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const latestProducts = await Product.find({ active: 1, expired:false, selling_price_method: "offline", created_at: { $gte: latest } }).sort({ _id: -1 })
+        const latestProducts = await Product.find({ active: 1, expired: false, selling_price_method: "offline", created_at: { $gte: latest } }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
 
-        const totalProducts = await Product.find({ active: 1, expired:false, selling_price_method: "offline" })
+        const totalProducts = await Product.find({ active: 1, expired: false, selling_price_method: "offline" })
 
         return res.status(200).send({
             message: "Get All Products",
@@ -891,38 +891,38 @@ const adminProducts = async (req, res) => {
     const lastPrice = Number(req.query.lastprice);
     const limit = Number(req.query.limit);
     const offset = Number(req.query.offset);
-    const expired  = req.query.expired
+    const expired = req.query.expired
 
 
     let expiremthods = [];
 
-    if(expired ==="" ){
-        expiremthods.push(true,false)
-    }else{
-        if(expired==="false"){
+    if (expired === "") {
+        expiremthods.push(true, false)
+    } else {
+        if (expired === "false") {
             expiremthods.push(false)
-        }else{
+        } else {
             expiremthods.push(true)
-            
+
         }
     }
 
     console.log("expiremthods-----------", expiremthods)
     try {
-        let query = { adminId: adminId, type: type,expired:{$in:expiremthods} }
+        let query = { adminId: adminId, type: type, expired: { $in: expiremthods } }
         if (!keyword && !startPrice && !lastPrice) {
             // 1. If no keyword and no startprice and lastprice, then get all products
             query = query
         } else if (keyword && !startPrice && !lastPrice) {
             // 2. If keyword present but startprice and last price missing, then get all products by matching keyword
-            query = { ...query, searchstring: { $regex: keyword, $options: 'i' },expired:{$in:expiremthods} };
+            query = { ...query, searchstring: { $regex: keyword, $options: 'i' }, expired: { $in: expiremthods } };
 
         } else if (keyword && startPrice && lastPrice) {
             // 3. If keyword present and also startprice and last price present, then get all products by matching keyword and price
             query = {
                 ...query,
                 searchstring: { $regex: keyword, $options: 'i' },
-                expired:{$in:expiremthods},
+                expired: { $in: expiremthods },
                 weight: {
                     "$elemMatch": {
                         "price": {
@@ -937,7 +937,7 @@ const adminProducts = async (req, res) => {
             // 4. If keyword not present but startprice and last price present, then get all products by matching price
             query = {
                 ...query,
-                expired:{$in:expiremthods},
+                expired: { $in: expiremthods },
                 weight: {
                     "$elemMatch": {
                         "price": {
@@ -952,7 +952,7 @@ const adminProducts = async (req, res) => {
             // 5. If only startprice present, then get all products with price greater than or equal to startprice
             query = {
                 ...query,
-                expired:{$in:expiremthods},
+                expired: { $in: expiremthods },
                 weight: {
                     "$elemMatch": {
                         "price": {
@@ -967,7 +967,7 @@ const adminProducts = async (req, res) => {
             // 6. If only lastprice present, then get all products with price less than or equal to lastprice
             query = {
                 ...query,
-                expired:{$in:expiremthods},
+                expired: { $in: expiremthods },
                 weight: {
                     "$elemMatch": {
                         "price": {
@@ -983,7 +983,7 @@ const adminProducts = async (req, res) => {
         }
         const products = await Product.find(query).sort({ _id: -1 }).skip(offset)
             .limit(limit);
-        const totalData = await Product.find({ type: type, adminId: adminId ,expired:{$in:expiremthods}}).sort({ _id: -1 }).count();
+        const totalData = await Product.find({ type: type, adminId: adminId, expired: { $in: expiremthods } }).sort({ _id: -1 }).count();
 
 
         if (products.length === 0) {
@@ -1263,58 +1263,139 @@ const productPriceVariation = async (req, res) => {
 
 }
 
-const expiryproducts = async(req,res)=>{
+const expiryproducts = async (req, res) => {
 
-    let { adminId, shop_id , agentId , limit , offset} = req.query
+    let { adminId, shop_id, agentId, limit, offset } = req.query
 
     limit = parseInt(limit);
-    offset =parseInt(offset);
+    offset = parseInt(offset);
 
     try {
-        
+
         if (!adminId || !shop_id || !agentId) {
             return res.status(400).send({ success: false, message: "Missing Credentials" })
         }
 
         const result = await Expiry.find({
-            agentId:agentId,
-            shop_id:shop_id,
+            agentId: agentId,
+            shop_id: shop_id,
         })
 
-    
 
-        if(result.length===0){
+
+        if (result.length === 0) {
             return res.status(400).send({
-                success:false,
-                message:"No Products Found of that Agent"
+                success: false,
+                message: "No Products Found of that Agent"
             })
         }
 
-        let allpdids = result[0].productId.map((ele)=>ele)
+        let allpdids = result[0].productId.map((ele) => ele)
 
-        const allproducts  = await Product.find({productId:{$in:allpdids}}).skip(offset)
-        .limit(limit);
-        const alldata = await Product.find({productId:{$in:allpdids}})
+        const allproducts = await Product.find({ productId: { $in: allpdids } }).skip(offset)
+            .limit(limit);
+        const alldata = await Product.find({ productId: { $in: allpdids } })
 
         let totalcount = alldata.length
 
-        let modifieddata = allproducts.map((el)=>({
-            productId:el.productId,
-            name:el.name,
-            unit:el.unit,
-            weight:el.weight,
-            active:el.active,
-            expired:el.expired,
-            image:el.thumbnailimage,
+        let modifieddata = allproducts.map((el) => ({
+            productId: el.productId,
+            name: el.name,
+            unit: el.unit,
+            weight: el.weight,
+            active: el.active,
+            expired: el.expired,
+            image: el.thumbnailimage,
         }))
         return res.status(200).send({
-            success:true,
-            message:"Get all expired products of that specific agent",
-            totaldata:totalcount,
-            data:modifieddata
+            success: true,
+            message: "Get all expired products of that specific agent",
+            totaldata: totalcount,
+            data: modifieddata
         })
     } catch (error) {
-          console.error(error);
+        console.error(error);
+        return res.status(500).send({ message: "Internal Server Error", error: error.message });
+    }
+}
+
+
+const getqrProducts = async (req, res) => {
+
+    const limit = Number(req.query.limit);
+    const offset = Number(req.query.offset);
+    const type = Number(req.query.type);
+    const searchData = req.query.key;
+
+
+    try {
+        let matchQuery = { type: type, active: 1 };
+        
+        if (searchData) {
+            matchQuery.searchstring = { $regex: searchData, $options: "i" };  // Case-insensitive search
+        }
+
+        const products = await Product.aggregate([
+            {
+                $match: matchQuery
+            },
+            {
+                $unwind: "$weight"
+            },
+            {
+                $group: {
+                    _id: "$productId",
+                    details: {
+                        $push: {
+                            name: "$name",
+                            description:"$description",
+                            image: "$thumbnailimage",
+                            product_type: "$product_type",
+                            ratings: "$ratings",
+                            weight: "$weight.weight",
+                            price: "$weight.price",
+                            unit: "$unit",
+                            stock: "$weight.stock"
+
+                        }
+                    },
+
+                }
+            },
+            {
+                $unwind: "$details"
+            }, {
+                $project: {
+                    _id: 1,
+                    name: "$details.name",
+                    description:"$details.description",
+                    image: "$details.image",
+                    product_type: "$details.product_type",
+                    ratings: "$details.ratings",
+                    weight: "$details.weight",
+                    price: "$details.price",
+                    stock: "$details.stock",
+                    unit: "$details.unit",
+
+                }
+            }, {
+                $sort: { _id: -1 }
+            }, {
+                $skip: offset
+            },
+            {
+                $limit: limit
+            }
+        ])
+
+
+        return res.status(200).send({
+            success: true,
+            message: "Get all products",
+            data: products
+        })
+    } catch (error) {
+        console.error(error);
         return res.status(500).send({ message: "Internal Server Error", error: error.message });
     }
 }
@@ -1341,5 +1422,6 @@ module.exports = {
     countUpdate,
     updateCategoryStatus,
     productPriceVariation,
-    expiryproducts
+    expiryproducts,
+    getqrProducts
 } 

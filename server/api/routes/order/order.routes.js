@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const {createOrder, getAllOrders, countOrders,cancelOrder, getSingleOrder, updateOrder} = require("../../controllers/order.controller")
+const {createOrder, getAllOrders, countOrders,cancelOrder, getSingleOrder, updateOrder, manualReqOrder, requestOrders} = require("../../controllers/order.controller")
 
 
 
@@ -11,5 +11,8 @@ router.get("/getorder/:orderId",getSingleOrder)
 router.get('/count',countOrders)
 router.put('/cancel',cancelOrder)
 router.put('/updateOrder',updateOrder)
+
+router.post("/manualorder",manualReqOrder)
+router.get("/getmanualorders",requestOrders)
 
 module.exports = router

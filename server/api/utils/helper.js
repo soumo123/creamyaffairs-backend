@@ -9,6 +9,8 @@ const Vendor = require("../models/vendor.model.js")
 const Agent = require("../models/agent.model.js")
 const Distribute = require('../models/distribute-order.model.js')
 const RequestOrder = require('../models/requestorder.model.js')
+const ManualOrder = require('../models/manualorder.model.js')
+
 
 
 const CheckoutAdress = require('../models/checkoutadress.model')
@@ -69,6 +71,11 @@ const getNextSequentialId = async (ids) => {
     idPrefix = "REQ";
     lastId = await RequestOrder.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.reqId ? lastId.reqId : "");
+  } 
+  if(ids==="TOKEN"){
+    idPrefix = "TOKEN";
+    lastId = await ManualOrder.findOne().sort({ _id: -1 });
+    existingIds.push(lastId && lastId.tokenId ? lastId.tokenId : "");
   }
   // Uncomment the else block if needed
   // else {
