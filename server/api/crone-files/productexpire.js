@@ -14,14 +14,15 @@ const productExpiry = async () => {
 
         try {
             const products = await Products.find({
-                $expr: {
-                    $and: [
-                        { $eq: [{ $year: "$expiry_date" }, { $year: new Date() }] },
-                        { $eq: [{ $month: "$expiry_date" }, { $month: new Date() }] },
-                        { $eq: [{ $dayOfMonth: "$expiry_date" }, { $dayOfMonth: new Date() }] }
-                    ]
-                },
-                active:1,
+                // $expr: {
+                //     $and: [
+                //         { $eq: [{ $year: "$expiry_date" }, { $year: new Date() }] },
+                //         { $eq: [{ $month: "$expiry_date" }, { $month: new Date() }] },
+                //         { $eq: [{ $dayOfMonth: "$expiry_date" }, { $dayOfMonth: new Date() }] }
+                //     ]
+                // },
+                expiry_date: {$lte: new Date()},
+                active: 1,
                 expired: false
             });
             if (products.length > 0) {
@@ -79,7 +80,7 @@ const sendNotification = async () => {
                 expired: false,
                 active: 1
             })
-
+            console.log("expiryproducts", expiryproducts)
             const stockProducts = await Products.aggregate([
                 { $unwind: "$weight" },
                 {
@@ -87,41 +88,42 @@ const sendNotification = async () => {
                         "weight.stock": { $lte: 4 },
                         active: 1,
                         expired: false,
-                        process:0
+                        process: 0
                     }
                 },
                 {
                     $project: {
                         _id: 0,
-                        agentId:"$agentId",
+                        agentId: "$agentId",
                         productname: "$name",
                         productId: "$productId",
                         weight: "$weight.weight",
                         stock: "$weight.stock",
-                        price:"$weight.price",
-                        purchaseprice:"$weight.purchaseprice",
+                        price: "$weight.price",
+                        purchaseprice: "$weight.purchaseprice",
                         unit: "$unit",
-                        adminId:"$adminId",
-                        type:"$type"
+                        adminId: "$adminId",
+                        type: "$type"
                     }
                 }
             ])
 
-            
+
 
             console.log("stockProducts", stockProducts)
             if (expiryproducts.length > 0) {
                 console.log("Crone Start For Expiry Products-------------------------");
                 for (let ele of expiryproducts) {
                     let checkTime = checkExpiry(ele.expiry_date)
-                    
+
                     await Notification.create({
                         productId: ele.productId,
-                        adminId:ele.adminId,
+                        agentId:ele.agentId,
+                        adminId: ele.adminId,
                         productname: ele.name,
                         message: `Hurry ${checkTime}`,
-                        type:ele.type,
-                        notification_type:1
+                        type: ele.type,
+                        notification_type: 1
                     })
                 }
             }
@@ -131,18 +133,18 @@ const sendNotification = async () => {
                     await Notification.create({
                         productId: ele.productId,
                         productname: ele.productname,
-                        weight:ele.weight,
-                        stock:ele.stock,
-                        price:ele.price,
-                        purchaseprice:ele.purchaseprice,
-                        adminId:ele.adminId,
-                        agentId:ele.agentId,
-                        type:ele.type,
-                        notification_type:2,
+                        weight: ele.weight,
+                        stock: ele.stock,
+                        price: ele.price,
+                        purchaseprice: ele.purchaseprice,
+                        adminId: ele.adminId,
+                        agentId: ele.agentId,
+                        type: ele.type,
+                        notification_type: 2,
                         message: `${ele.productname} of weight ${ele.weight} ${ele.unit} have only ${ele.stock} items left`
                     })
 
-                    await Products.updateOne({productId:ele.productId},{$set:{process:1}})
+                    await Products.updateOne({ productId: ele.productId }, { $set: { process: 1 } })
                 }
             }
 
