@@ -741,7 +741,7 @@ const getAllNotifications = async (req, res) => {
 
         const agents = await Agent.find({})
 
-        const result = await Notification.find({ checked:false,adminId: adminId, type: Number(type) })
+        const result = await Notification.find({ checked:false,adminId: adminId, type: Number(type) }).sort({_id:-1})
 
         if (result.length === 0) {
             return res.status(400).send({ message: "No Notification Found", success: false })
