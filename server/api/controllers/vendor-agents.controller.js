@@ -36,8 +36,8 @@ const addVendor = async (req, res) => {
             Vendor.findOne({ name: name }),
             Vendor.findOne({ phone: phone }),
         ]);
-          // Email check
-          if (emailData) {
+        // Email check
+        if (emailData) {
             return res.status(400).send({
                 message: 'Email already present'
             });
@@ -149,8 +149,8 @@ const addAgent = async (req, res) => {
             Agent.findOne({ phone: phone }),
             Vendor.findOne({ vendorId: vendor_id })
         ]);
-          // Email check
-          if (emailData) {
+        // Email check
+        if (emailData) {
             return res.status(400).send({
                 message: 'Email already present'
             });
@@ -239,16 +239,23 @@ const getAllVendors = async (req, res) => {
 const getallAgents = async (req, res) => {
 
     try {
-        const { shop_id, key } = req.query;
+        let { shop_id, key, statustype } = req.query;
+        let status= [];
         let queryFilter = undefined;
+        if (statustype === "" || statustype === null || statustype === undefined) {
+            status = [1,0]
+        } else {
+            status.push(Number(statustype))
+        }
+
 
         if (!shop_id) {
             return res.status(400).send({ status: false, message: "Missing shop id" })
         }
         if (key) {
-            queryFilter = { shopId: shop_id, name: { $regex: key, $options: 'i' } }
+            queryFilter = { shopId: shop_id,status:{$in:status},name: { $regex: key, $options: 'i' } }
         } else {
-            queryFilter = { shopId: shop_id }
+            queryFilter = { shopId: shop_id,status:{$in:status}}
         }
 
         let agents = await Agent.find(queryFilter).sort({ _id: -1 })
@@ -258,7 +265,8 @@ const getallAgents = async (req, res) => {
                 agentId: ele.agentId,
                 agent_name: ele.name,
                 agent_phone: ele.phone,
-                agent_image: ele.image
+                agent_image: ele.image,
+                status:ele.status
             }
         })
 
@@ -273,6 +281,33 @@ const getallAgents = async (req, res) => {
         console.log(error.stack);
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
     }
+}
+
+
+const updateAgentStatus = async (req, res) => {
+
+    let { agentId, shopId, status } = req.query
+    status = parseInt(status)
+
+    try {
+        if (!agentId || !shopId) {
+            return res.status(400).send({ status: false, message: "Missing details" })
+        }
+        const result = await Agent.updateOne({ agentId: agentId, shopId: shopId }, { $set: { status: status } })
+
+        if (result.modifiedCount === 1) {
+            return res.status(200).send({ success: true, message: "Status Updated" })
+        } else {
+            return res.status(400).send({ success: false, message: "Status Not Updated" })
+
+        }
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+
 }
 
 
@@ -887,6 +922,7 @@ const searchagentandvendors = async (req, res) => {
         }
 
         const result = await Agent.find({
+            status: 1,
             $or: [
                 { vendorname: { $regex: key, $options: 'i' } },
                 { name: { $regex: key, $options: 'i' } }
@@ -975,6 +1011,7 @@ module.exports = {
     addAgent,
     getAllVendors,
     getallAgents,
+    updateAgentStatus,
     addInventory,
     getTransctions,
     updateStock,
