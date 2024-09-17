@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { addVendor,addAgent, getAllVendors, getallAgents, addInventory, getTransctions, updateStock, updateMoney, viewTransaction, barCodeProduct,viewVendorAgent, requestOrder, getAllRequstedOrders, searchagentandvendors, getReqordersSpecificAgents} = require('../../controllers/vendor-agents.controller.js');
+const { addVendor,addAgent, getAllVendors, getallAgents, addInventory, getTransctions, updateStock, updateMoney, viewTransaction, barCodeProduct,viewVendorAgent, requestOrder, getAllRequstedOrders, searchagentandvendors, getReqordersSpecificAgents,updateAgentStatus} = require('../../controllers/vendor-agents.controller.js');
 const {ensureAuthenticated} = require('../../middleware/jwtVerify.js')
 const multer = require('multer');
 
@@ -10,6 +10,7 @@ const upload = multer({ storage: storage }).single('file');
 
 router.post('/addVendor',upload ,addVendor);
 router.post('/addAgent',upload ,addAgent);
+router.put('/update_agent_status',updateAgentStatus)
 router.get("/get_all_vendors",getAllVendors)
 router.get("/get_al_agents",getallAgents);
 
