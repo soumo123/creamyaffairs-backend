@@ -14,6 +14,10 @@ const agentSchema = new mongoose.Schema({
         type:String,
         required:true
     },
+    status:{
+        type:Number,
+        default:1
+    },
     shopId:{
         type:String,
         required:true
