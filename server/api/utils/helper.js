@@ -32,47 +32,47 @@ const getNextSequentialId = async (ids) => {
     lastId = await User.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.userId ? lastId.userId : "");
   }
-  if(ids === "PD"){
+  if (ids === "PD") {
     idPrefix = "PD";
     lastId = await Product.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.productId ? lastId.productId : "");
   }
-  if(ids ==="ADMIN"){
+  if (ids === "ADMIN") {
     idPrefix = "ADMIN";
     lastId = await Admin.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.adminId ? lastId.adminId : "");
   }
-  if(ids==="SHOP"){
+  if (ids === "SHOP") {
     idPrefix = "SHOP";
     lastId = await Shops.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.shop_id ? lastId.shop_id : "");
   }
-  if(ids==="ORDER"){
+  if (ids === "ORDER") {
     idPrefix = "ORDER";
     lastId = await Order.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.orderId ? lastId.orderId : "");
   }
-  if(ids==="VEN"){
+  if (ids === "VEN") {
     idPrefix = "VEN";
     lastId = await Vendor.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.vendorId ? lastId.vendorId : "");
   }
-  if(ids==="AGENT"){
+  if (ids === "AGENT") {
     idPrefix = "AGENT";
     lastId = await Agent.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.agentId ? lastId.agentId : "");
   }
-  if(ids==="TRANS"){
+  if (ids === "TRANS") {
     idPrefix = "TRANS";
     lastId = await Distribute.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.transaction_id ? lastId.transaction_id : "");
   }
-  if(ids==="REQ"){
+  if (ids === "REQ") {
     idPrefix = "REQ";
     lastId = await RequestOrder.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.reqId ? lastId.reqId : "");
-  } 
-  if(ids==="TOKEN"){
+  }
+  if (ids === "TOKEN") {
     idPrefix = "TOKEN";
     lastId = await ManualOrder.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.tokenId ? lastId.tokenId : "");
@@ -112,45 +112,45 @@ const checkPassword = async (password, hashedPassword) => {
 
 const getLastAndIncrementId = async () => {
   try {
-      // Find the document with the highest ID
-      const lastTag = await Tags.aggregate([
-          { $group: { _id: null, tag_id: { $max: "$tag_id" } } }
-      ]);
-    
-      // If there are no tags yet, start with ID 1
-      let newId = 1;
+    // Find the document with the highest ID
+    const lastTag = await Tags.aggregate([
+      { $group: { _id: null, tag_id: { $max: "$tag_id" } } }
+    ]);
 
-      // If there are tags, increment the maximum ID by 1
-      if (lastTag.length > 0) {
-          newId = lastTag[0].tag_id + 1;
-      }
+    // If there are no tags yet, start with ID 1
+    let newId = 1;
 
-      return newId;
+    // If there are tags, increment the maximum ID by 1
+    if (lastTag.length > 0) {
+      newId = lastTag[0].tag_id + 1;
+    }
+
+    return newId;
   } catch (error) {
-      console.error("Error occurred while getting and incrementing the last ID:", error);
-      throw error;
+    console.error("Error occurred while getting and incrementing the last ID:", error);
+    throw error;
   }
 };
 
 const getLastTypeId = async () => {
   try {
-      // Find the document with the highest ID
-      const lastTag = await Shops.aggregate([
-          { $group: { _id: null, type: { $max: "$type" } } }
-      ]);
-    
-      // If there are no tags yet, start with ID 1
-      let newId = 1;
+    // Find the document with the highest ID
+    const lastTag = await Shops.aggregate([
+      { $group: { _id: null, type: { $max: "$type" } } }
+    ]);
 
-      // If there are tags, increment the maximum ID by 1
-      if (lastTag.length > 0) {
-          newId = lastTag[0].type + 1;
-      }
+    // If there are no tags yet, start with ID 1
+    let newId = 1;
 
-      return newId;
+    // If there are tags, increment the maximum ID by 1
+    if (lastTag.length > 0) {
+      newId = lastTag[0].type + 1;
+    }
+
+    return newId;
   } catch (error) {
-      console.error("Error occurred while getting and incrementing the last ID:", error);
-      throw error;
+    console.error("Error occurred while getting and incrementing the last ID:", error);
+    throw error;
   }
 };
 
@@ -159,55 +159,56 @@ const getLastTypeId = async () => {
 
 const getLastAdressId = async () => {
   try {
-      // Find the document with the highest ID
-      const lastTag = await CheckoutAdress.aggregate([
-          { $group: { _id: null, id: { $max: "$id" } } }
-      ]);
-    
-      // If there are no tags yet, start with ID 1
-      let newId = 1;
+    // Find the document with the highest ID
+    const lastTag = await CheckoutAdress.aggregate([
+      { $group: { _id: null, id: { $max: "$id" } } }
+    ]);
 
-      // If there are tags, increment the maximum ID by 1
-      if (lastTag.length > 0) {
-          newId = lastTag[0].id + 1;
-      }
+    // If there are no tags yet, start with ID 1
+    let newId = 1;
 
-      return newId;
+    // If there are tags, increment the maximum ID by 1
+    if (lastTag.length > 0) {
+      newId = lastTag[0].id + 1;
+    }
+
+    return newId;
   } catch (error) {
-      console.error("Error occurred while getting and incrementing the last ID:", error);
-      throw error;
+    console.error("Error occurred while getting and incrementing the last ID:", error);
+    throw error;
   }
 };
 
 
-const generateAndUploadBarcode = (productId)=>{
+const generateAndUploadBarcode = (productId) => {
 
   try {
     return new Promise((resolve, reject) => {
       bwipjs.toBuffer({
-          bcid:        'qrcode',       // Barcode type
-          text:        productId,       // Text to encode (Product ID)
-          scale:       3,               // 3x scaling factor
-          height:      20,              // Bar height, in millimeters
-          includetext: true,            // Show human-readable text
-      },async (err, png) => {
-          if (err) return reject(err);
-          
-          const fileName = `${productId}.png`;
-          // const filePath = path.join(__dirname, fileName);
-          const bucketName = process.env.S3_BUCKT_NAME;
+        bcid: 'code128',       // Barcode type
+        text: productId,       // Text to encode (Product ID)
+        scale: 3,               // 3x scaling factor
+        height: 20,              // Bar height, in millimeters
+        includetext: true,      // Include human-readable text
+        textxalign: 'center',   // Align the text at the center
+      }, async (err, png) => {
+        if (err) return reject(err);
 
-          // fs.writeFile(filePath, png, async (err) => {
-          //     if (err) return reject(err);
-              
-              // Upload to S3
-              // const fileStream = fs.createReadStream(filePath);
-              const barUrl = await uploadFileToS3(bucketName, fileName, png);
-              resolve(barUrl); 
-          // });
+        const fileName = `${productId}.png`;
+        // const filePath = path.join(__dirname, fileName);
+        const bucketName = process.env.S3_BUCKT_NAME;
+
+        // fs.writeFile(filePath, png, async (err) => {
+        //     if (err) return reject(err);
+
+        // Upload to S3
+        // const fileStream = fs.createReadStream(filePath);
+        const barUrl = await uploadFileToS3(bucketName, fileName, png);
+        resolve(barUrl);
+        // });
       });
-  });
-    
+    });
+
   } catch (error) {
     console.error("Error occurred:", error.stack);
     throw error;
@@ -279,13 +280,13 @@ const checkExpiry = (expiryDate) => {
 
 
 
-module.exports  =  {
-    getNextSequentialId,
-    checkPassword,
-    getLastAndIncrementId,
-    getLastTypeId,
-    getLastAdressId,
-    generateAndUploadBarcode,
-    checkExpiry
-  }
-  
+module.exports = {
+  getNextSequentialId,
+  checkPassword,
+  getLastAndIncrementId,
+  getLastTypeId,
+  getLastAdressId,
+  generateAndUploadBarcode,
+  checkExpiry
+}
+

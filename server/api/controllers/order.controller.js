@@ -11,7 +11,7 @@ const createOrder = async (req, res) => {
     try {
 
         const { receivedData, cgst, sgst, initialDeposit, orderedPrice, username, extrathings, extraprice, notes, discount, status, paid, order_method, deliver_date, phone } = req.body
-        const { userId, type, shop_id, adminId ,tokenId} = req.query
+        const { userId, type, shop_id, adminId, tokenId } = req.query
         let orderId = await getNextSequentialId("ORDER");
 
         const order = await Order.create({
@@ -106,7 +106,7 @@ const createOrder = async (req, res) => {
         }
 
 
-        const updateManualOrder = await ManualOrder.updateOne({tokenId:tokenId},{$set:{status:1}})
+        const updateManualOrder = await ManualOrder.updateOne({ tokenId: tokenId }, { $set: { status: 1 } })
 
 
         // const removeCart = await Cart.updateOne({ userId: userId }, { $set: { products: [] } })
@@ -151,9 +151,9 @@ const getAllOrders = async (req, res) => {
 
         let totalData = await Order.find({ shop_id: shopId, type: type, order_method: { $in: ordermethod } }).count()
 
-        const reqorders = await ManualOrder.find({type:type,status:0}).count()
+        const reqorders = await ManualOrder.find({ type: type, status: 0 }).count()
 
-        return res.status(200).send({ success: true, totalData: totalData, totalReqorders:reqorders,data: orders })
+        return res.status(200).send({ success: true, totalData: totalData, totalReqorders: reqorders, data: orders })
 
     } catch (error) {
         console.log(error.stack);
@@ -358,7 +358,7 @@ const manualReqOrder = async (req, res) => {
 
 const requestOrders = async (req, res) => {
 
-    let { type,key,limit,offset} = req.query;
+    let { type, key, limit, offset } = req.query;
     type = parseInt(type)
     limit = parseInt(limit) || 10
     offset = parseInt(offset) || 0
@@ -369,16 +369,16 @@ const requestOrders = async (req, res) => {
             return res.status(400).send({ success: false, message: "Missing Credentials" })
         }
 
-        const result = await ManualOrder.find({type:type,status:0,tokenId: { $regex: key, $options: 'i' }}).sort({_id:-1}).skip(offset)
-        .limit(limit);
+        const result = await ManualOrder.find({ type: type, status: 0, tokenId: { $regex: key, $options: 'i' } }).sort({ _id: -1 }).skip(offset)
+            .limit(limit);
 
-        const totaldata = await ManualOrder.find({type:type,status:0}).sort({_id:-1}).count()
+        const totaldata = await ManualOrder.find({ type: type, status: 0 }).sort({ _id: -1 }).count()
 
-        if(result.length===0){
+        if (result.length === 0) {
             return res.status(400).send({ success: false, message: "No Requested Order Found" })
         }
 
-        return res.status(200).send({sucess: true, message:"Get all requested orders", totalData:totaldata,data:result})
+        return res.status(200).send({ sucess: true, message: "Get all requested orders", totalData: totaldata, data: result })
 
 
     } catch (error) {
@@ -390,4 +390,37 @@ const requestOrders = async (req, res) => {
 
 }
 
-module.exports = { createOrder, getAllOrders, getSingleOrder, updateOrder, cancelOrder, countOrders, manualReqOrder ,requestOrders}
+
+const acceptrejectorder = async (req, res) => {
+
+    let { adminId, type, tokenId, accept } = req.query
+    type = parseInt(type)
+    accept = parseInt(accept)
+
+    try {
+
+        if (!type || !tokenId) {
+            return res.status(400).send({ success: false, message: "Missing Credentials" })
+        }
+        if (!accept) {
+            return res.status(400).send({ success: false, message: "Status is missing" })
+        }
+
+        const updateStatus = await ManualOrder.updateOne({ tokenId: tokenId, type: type }, { $set: { accept: accept } })
+
+        if (accept===1 && updateStatus.modifiedCount === 1) {
+            return res.status(200).send({ success: true, message: "Order Accepted" })
+        } else if (accept===-1 && updateStatus.modifiedCount === 1){
+            return res.status(200).send({ success: false, message: "Order Rejected"})
+        }else{
+            return res.status(400).send({ success: false, message: "Error for accepting order"})
+        }
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+}
+
+
+module.exports = { createOrder, getAllOrders, getSingleOrder, updateOrder, cancelOrder, countOrders, manualReqOrder, requestOrders, acceptrejectorder }

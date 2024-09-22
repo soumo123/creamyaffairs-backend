@@ -28,6 +28,10 @@ const vendorSchema = new mongoose.Schema({
     role:{
         type:String
     },
+    status:{
+        type:Number,
+        default:1
+    },
     created_at: {
         type: Date,
         default: () => {

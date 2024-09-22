@@ -54,6 +54,10 @@ const manusalorderSchema = new mongoose.Schema({
         type:Number,
         default:0
     },
+    accept:{
+        type:Number,
+        default:0
+    },
     created_at: {
         type: Date,
         default: () => {

@@ -218,7 +218,8 @@ const getAllVendors = async (req, res) => {
                 vendorId: ele.vendorId,
                 vendor_name: ele.name,
                 vendor_phone: ele.phone,
-                vendor_image: ele.image
+                vendor_image: ele.image,
+                status: ele.status
             }
         })
 
@@ -240,10 +241,10 @@ const getallAgents = async (req, res) => {
 
     try {
         let { shop_id, key, statustype } = req.query;
-        let status= [];
+        let status = [];
         let queryFilter = undefined;
         if (statustype === "" || statustype === null || statustype === undefined) {
-            status = [1,0]
+            status = [1, 0]
         } else {
             status.push(Number(statustype))
         }
@@ -253,9 +254,9 @@ const getallAgents = async (req, res) => {
             return res.status(400).send({ status: false, message: "Missing shop id" })
         }
         if (key) {
-            queryFilter = { shopId: shop_id,status:{$in:status},name: { $regex: key, $options: 'i' } }
+            queryFilter = { shopId: shop_id, status: { $in: status }, name: { $regex: key, $options: 'i' } }
         } else {
-            queryFilter = { shopId: shop_id,status:{$in:status}}
+            queryFilter = { shopId: shop_id, status: { $in: status } }
         }
 
         let agents = await Agent.find(queryFilter).sort({ _id: -1 })
@@ -266,7 +267,7 @@ const getallAgents = async (req, res) => {
                 agent_name: ele.name,
                 agent_phone: ele.phone,
                 agent_image: ele.image,
-                status:ele.status
+                status: ele.status
             }
         })
 
@@ -294,6 +295,32 @@ const updateAgentStatus = async (req, res) => {
             return res.status(400).send({ status: false, message: "Missing details" })
         }
         const result = await Agent.updateOne({ agentId: agentId, shopId: shopId }, { $set: { status: status } })
+
+        if (result.modifiedCount === 1) {
+            return res.status(200).send({ success: true, message: "Status Updated" })
+        } else {
+            return res.status(400).send({ success: false, message: "Status Not Updated" })
+
+        }
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+
+}
+
+const updateVendorStatus = async (req, res) => {
+
+    let { vendorId, shopId, status } = req.query
+    status = parseInt(status)
+
+    try {
+        if (!vendorId || !shopId) {
+            return res.status(400).send({ status: false, message: "Missing details" })
+        }
+        const result = await Vendor.updateOne({ vendorId: vendorId, shopId: shopId }, { $set: { status: status } })
 
         if (result.modifiedCount === 1) {
             return res.status(200).send({ success: true, message: "Status Updated" })
@@ -912,13 +939,14 @@ const getAllRequstedOrders = async (req, res) => {
 
 
 const searchagentandvendors = async (req, res) => {
-
-    const { adminId, key } = req.query
+    const { adminId, key } = req.query;
+    let vendorId = [];
+    let venMp = new Map();
+    let agentMap = new Map();
 
     try {
-
         if (!adminId || !key) {
-            return res.status(400).send({ success: false, message: "Missing creendentials" })
+            return res.status(400).send({ success: false, message: "Missing credentials" });
         }
 
         const result = await Agent.find({
@@ -927,27 +955,47 @@ const searchagentandvendors = async (req, res) => {
                 { vendorname: { $regex: key, $options: 'i' } },
                 { name: { $regex: key, $options: 'i' } }
             ]
-        })
+        });
 
+        console.log("resultresult", result);
 
-        if (result.length === 0) {
-            return res.status(400).send({ success: false, message: "No Vendor or Agent Found" })
+        result.forEach((ele) => {
+            if (!agentMap.has(ele.vendorId)) {
+                agentMap.set(ele.vendorId, []);
+            }
+            agentMap.get(ele.vendorId).push({
+                agentId: ele.agentId,
+                agName: ele.name
+            });
+            vendorId.push(ele.vendorId);
+        });
+
+        console.log("agentMap", agentMap);
+        console.log("vendorId", vendorId);
+
+        const result1 = await Vendor.find({ status: 1, vendorId: { $in: vendorId } });
+
+        if (result1.length === 0) {
+            return res.status(400).send({ success: false, message: "No Vendor or Agent Found" });
         }
 
-        const response = result.map((ele) => ({
-            title: `${ele.name} (${ele.agentId}) from ${ele.vendorname} (${ele.vendorId})`,
-            value: ele.agentId,
-            label: ele.vendorId
-        }))
+        console.log("venMp", venMp);
 
-        return res.status(200).send({ success: true, message: "Get all results", data: response })
+        const response = result1.flatMap((ele) => 
+            (agentMap.get(ele.vendorId) || []).map(agent => ({
+                title: `${agent.agName} (${agent.agentId}) from ${ele.name} (${ele.vendorId})`,
+                value: agent.agentId,
+                label: ele.vendorId
+            }))
+        );
 
-
+        return res.status(200).send({ success: true, message: "Get all results", data: response });
     } catch (error) {
         console.log(error.stack);
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
     }
-}
+};
+
 
 
 const getReqordersSpecificAgents = async (req, res) => {
@@ -1012,6 +1060,7 @@ module.exports = {
     getAllVendors,
     getallAgents,
     updateAgentStatus,
+    updateVendorStatus,
     addInventory,
     getTransctions,
     updateStock,
