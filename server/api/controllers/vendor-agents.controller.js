@@ -551,13 +551,11 @@ const updateMoney = async (req, res) => {
 const updateStock = async (req, res) => {
 
     const { shop_id, type, agentId, adminId } = req.query;
-    const { savedProducts, addedProducts } = req.body;
+    const { savedProducts, addedProducts ,returnProducts,returnPrie,cuttoffdiscount} = req.body;
     let totalPrice = 0
     let resultArray = [];
     let addedArray = [];
     let json = undefined;
-
-
 
     try {
         if (!savedProducts) {
@@ -635,9 +633,7 @@ const updateStock = async (req, res) => {
 
         }
 
-
         for (let ele of savedProducts) {
-            console.log("elee", ele)
             const product = await Product.findOne({ productId: ele.productId, type: Number(type), adminId: adminId });
 
             if (product) {
@@ -682,6 +678,16 @@ const updateStock = async (req, res) => {
             await RequestOrder.deleteOne({ reqId: ele.reqId })
         }
 
+        if(returnProducts.length > 0){
+
+            let allPdIds = returnProducts.map((ele)=>ele.productId)
+            await Expire.updateOne(
+                {agentId:agentId},
+                {$pull:{productId:{$in:allPdIds}}},
+                {$set:{updated_at:new Date()}}
+            )
+        }
+
         let concatinateArray = resultArray.concat(addedArray)
 
         json = {
@@ -691,11 +697,14 @@ const updateStock = async (req, res) => {
             distributorName: distributerName.name,
             shopOwnerId: shop_id,
             products: concatinateArray,
-            totalAmount: Number(totalPrice),
+            totalAmount: Number(totalPrice)- Number(returnPrie),
+            returcost:Number(returnPrie),
+            cuttoffdiscount:cuttoffdiscount,
+            returnproducts:returnProducts,
             pay: 0,
-            balance: Number(totalPrice)
-
+            balance: Number(totalPrice)- Number(returnPrie)
         }
+
         await Distribute.create(json)
 
 
@@ -771,6 +780,7 @@ const viewTransaction = async (req, res) => {
             distributorId: result.distributorId,
             products: productsGroupedByProductId,
             paid: result.paid,
+            returncost:result.returcost,
             totalAmount: result.totalAmount,
             pay: result.pay,
             balance: result.balance,

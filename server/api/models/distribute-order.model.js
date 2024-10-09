@@ -48,6 +48,14 @@ const distriButeSchema = new mongoose.Schema({
         type:Number,
         default:0
     },
+    cuttoffdiscount:{
+        type:Number,
+        default:0
+    },
+    returnproducts:{
+        type:Array,
+        default:[]
+    },
     totalAmount:{
         type:Number,
         required:true

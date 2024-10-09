@@ -10,7 +10,7 @@ const createOrder = async (req, res) => {
 
     try {
 
-        const { receivedData, cgst, sgst, initialDeposit, orderedPrice, username, extrathings, extraprice, notes, discount, status, paid, order_method, deliver_date, phone } = req.body
+        const { receivedData, cgst, sgst, initialDeposit, orderedPrice, username, extrathings, extraprice, notes, discount, status, paid, order_method, deliver_date, phone ,paymentmethod} = req.body
         const { userId, type, shop_id, adminId, tokenId } = req.query
         let orderId = await getNextSequentialId("ORDER");
 
@@ -33,6 +33,7 @@ const createOrder = async (req, res) => {
             orderedPrice: orderedPrice,
             paid: paid || false,
             order_method: order_method,
+            paymentmethod:paymentmethod || "offline",
             deliver_date: deliver_date,
             phone: Number(phone)
         })
