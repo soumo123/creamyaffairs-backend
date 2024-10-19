@@ -4,7 +4,7 @@ const Tags = require('../models/tags.model.js')
 const Whishlists = require('../models/whishlist.model.js')
 const Expiry = require('../models/expiredproducts.model.js')
 const uploadFileToS3 = require('../utils/fileUpload.js')
-const { getNextSequentialId, checkPassword, getLastAndIncrementId, generateAndUploadBarcode } = require('../utils/helper.js')
+const { getNextSequentialId, checkPassword, getLastAndIncrementId, generateAndUploadBarcode, checkAutorized } = require('../utils/helper.js')
 const dotenv = require('dotenv');
 dotenv.config();
 
@@ -127,8 +127,12 @@ const updateProduct = async (req, res, next) => {
         zomato_service_price, swiggy_service_price, zepto_service_price, blinkit_service_price, product_type
     } = req.body;
 
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+    let isCheck = await checkAutorized(token, adminId)
+    if (!isCheck.success) {
+        return res.status(400).send(isCheck);
+    }
 
-    console.log('JSON.parse(req.body.weight11)', JSON.parse(req.body.weight11))
     const adminId = req.params.adminId
     const productId = req.query.productId
     let files = req.files;
@@ -375,6 +379,12 @@ const avaliabilityCheck = async (req, res) => {
 
     try {
 
+        let token = req.headers['x-access-token'] || req.headers.authorization;
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
         if (active == undefined || active === null) {
             return res.status(400).send({ message: "Active not send" })
         }
@@ -508,9 +518,13 @@ const getProductById = async (req, res) => {
     const type = Number(req.query.type);
     const adminId = req.query.adminId;
     let query = undefined;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
 
     try {
-
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
         if (!productId || !type) {
             return res.status(400).send({
                 success: false,
@@ -657,25 +671,54 @@ const deleteTags = async (req, res) => {
 const getAllTags = async (req, res) => {
 
     const type = Number(req.query.type);
+    const limit = Number(req.query.limit)
+    const offset = Number(req.query.offset)
+
     const adminId = req.query.userId;
     let tags = undefined
     try {
 
         if (!adminId) {
-            tags = await Tags.find({ type: type })
+            tags = await Tags.find({ type: type }).sort({ _id: -1 })
         } else {
-            tags = await Tags.find({ type: type, userId: adminId })
-        }
+            // tags = await Tags.find({ type: type, userId: adminId })
 
-        let result = tags.map((ele) => ({
+            tags = await Tags.aggregate([
+                {
+                    $match: {
+                        type: type, 
+                        userId: adminId 
+                    }
+                },
+                {
+                    $facet: {
+                        totalCount: [
+                            { $count: "count" }
+                        ],
+                        data: [
+                            { $sort: { _id: -1 } },
+                            { $skip: offset },
+                            { $limit: limit },
+                        ]
+                    }
+                },
+                {
+                    $project: {
+                        totalCount: { $arrayElemAt: ["$totalCount.count", 0] },
+                        data: 1
+                    }
+                }
+            ])
+        }
+        let result = tags[0].data.map((ele) => ({
             label: ele.tag_name,
             value: ele.tag_id,
             thumbnailImage: ele.thumbnailimage,
             topCategory: ele.topCategory
         }));
+        let totalCount = tags[0]?.totalCount
 
-
-        return res.status(200).send({ message: "Get all tags", data: result })
+        return res.status(200).send({ message: "Get all tags", totalData: totalCount, data: result })
 
     } catch (error) {
         console.log(error.stack);
@@ -893,6 +936,11 @@ const adminProducts = async (req, res) => {
     const offset = Number(req.query.offset);
     const expired = req.query.expired
 
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+    let isCheck = await checkAutorized(token, adminId)
+    if (!isCheck.success) {
+        return res.status(400).send(isCheck);
+    }
 
     let expiremthods = [];
 
@@ -1007,9 +1055,16 @@ const deleteProductByAdmin = async (req, res) => {
     const adminId = req.query.adminId;
     const type = Number(req.query.type);
     const productId = req.query.productId
+    let token = req.headers['x-access-token'] || req.headers.authorization;
 
 
     try {
+
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
         const products = await Product.deleteOne({ adminId: adminId, type: type, productId: productId })
         const cart = await Cart.updateOne({ type: 1 },
             {
@@ -1330,7 +1385,7 @@ const getqrProducts = async (req, res) => {
 
     try {
         let matchQuery = { type: type, active: 1 };
-        
+
         if (searchData) {
             matchQuery.searchstring = { $regex: searchData, $options: "i" };  // Case-insensitive search
         }
@@ -1348,7 +1403,7 @@ const getqrProducts = async (req, res) => {
                     details: {
                         $push: {
                             name: "$name",
-                            description:"$description",
+                            description: "$description",
                             image: "$thumbnailimage",
                             product_type: "$product_type",
                             ratings: "$ratings",
@@ -1368,7 +1423,7 @@ const getqrProducts = async (req, res) => {
                 $project: {
                     _id: 1,
                     name: "$details.name",
-                    description:"$details.description",
+                    description: "$details.description",
                     image: "$details.image",
                     product_type: "$details.product_type",
                     ratings: "$details.ratings",

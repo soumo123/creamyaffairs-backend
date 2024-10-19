@@ -10,7 +10,7 @@ const Agent = require("../models/agent.model.js")
 const Distribute = require('../models/distribute-order.model.js')
 const RequestOrder = require('../models/requestorder.model.js')
 const ManualOrder = require('../models/manualorder.model.js')
-
+const jwt = require('jsonwebtoken')
 
 
 const CheckoutAdress = require('../models/checkoutadress.model')
@@ -19,7 +19,8 @@ const uploadFileToS3 = require('../utils/fileUpload.js')
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
-
+const dotenv = require('dotenv');
+dotenv.config();
 
 const getNextSequentialId = async (ids) => {
   let existingIds = [];
@@ -277,7 +278,42 @@ const checkExpiry = (expiryDate) => {
   }
 }
 
+const checkAutorized = async (token,adminId) => {
 
+  if (!token) return ({ message: 'No token provided',success:false });
+  if (!token.startsWith('Bearer')) {
+      return ({ message: 'Token not start with Bearer' , success:false});
+  } else {
+      token = token.substring(7, token.length);
+  }
+
+  const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY,(err,res)=>{
+     if(err){
+      return false
+     }else{
+      return true
+     }
+  });
+  if(!decoded){
+      return { message: 'Invalid Token' , success:false}
+  }
+
+  let decode = jwt.decode(token, { complete: true });
+  const currentTime = Math.floor(Date.now() / 1000);
+  if (currentTime > decode.payload.exp) {
+      return ({ success: false, message: `Token Expired` });
+  }
+
+  if(adminId !== decode.payload.adminId){
+      return ({ success: false, message: `Unauthorized` });
+  }
+  
+  return ({ success: true, message: `Authorized` });
+
+  
+
+
+}
 
 
 module.exports = {
@@ -287,6 +323,7 @@ module.exports = {
   getLastTypeId,
   getLastAdressId,
   generateAndUploadBarcode,
-  checkExpiry
+  checkExpiry,
+  checkAutorized
 }
 
