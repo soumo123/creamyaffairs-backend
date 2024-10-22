@@ -591,8 +591,13 @@ const createTags = async (req, res) => {
     const adminId = req.params.adminId
     const { name, type } = req.body
     const file = req.file;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
 
     try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
 
         if (!name) {
             return res.status(400).send({ message: "Name is missing" })
@@ -638,10 +643,14 @@ const deleteTags = async (req, res) => {
     const tagsId = Number(req.query.tagId);
     const type = Number(req.query.type);
     const adminId = req.params.adminId
+    let token = req.headers['x-access-token'] || req.headers.authorization;
 
 
     try {
-
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
         if (!tagsId) {
             return res.status(400).send({
                 message: "Tag id is missing",
@@ -1088,9 +1097,14 @@ const editTag = async (req, res) => {
     const adminId = req.params.adminId;
     const tagId = Number(req.params.tag_id)
     const { name, type } = req.body
+    let token = req.headers['x-access-token'] || req.headers.authorization;
     const file = req.file;
     let s3Url = undefined;
     try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
         if (!tagId) {
             return res.status(400).send({ message: "Tag id is missing", success: false })
         }
@@ -1268,8 +1282,13 @@ const updateCategoryStatus = async (req, res) => {
     let status = Number(req.query.status)
     let tag_id = Number(req.query.tag_id)
 
+    let token = req.headers['x-access-token'] || req.headers.authorization;
     try {
-        console.log("userId , type  ,  status", userId, type, status)
+        let isCheck = await checkAutorized(token, userId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
         const response = await Tags.updateOne({ tag_id: tag_id, userId: userId, type: type }, { $set: { topCategory: status } })
 
 

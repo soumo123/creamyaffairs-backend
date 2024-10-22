@@ -7,7 +7,7 @@ const RequestOrder = require('../models/requestorder.model.js')
 const Notification = require('../models/notification.model.js')
 
 const uploadFileToS3 = require('../utils/fileUpload.js');
-const { getNextSequentialId, generateAndUploadBarcode } = require('../utils/helper.js');
+const { getNextSequentialId, generateAndUploadBarcode ,checkAutorized} = require('../utils/helper.js');
 const dotenv = require('dotenv');
 dotenv.config();
 
@@ -15,11 +15,20 @@ dotenv.config();
 
 
 const addVendor = async (req, res) => {
+    let { name, email, phone } = req.body;
+    const shop_id = req.query.shop_id;
+    const adminId = req.query.adminId;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+    name = name.trim();
+    const file = req.file;
+
     try {
-        let { name, email, phone } = req.body;
-        const shop_id = req.query.shop_id;
-        name = name.trim();
-        const file = req.file;
+
+
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
 
         if (!name || !email || !phone) {
             return res.status(400).send({
@@ -127,11 +136,17 @@ const updateVendor = async (req, res) => {
 }
 
 const addAgent = async (req, res) => {
+    let { name, email, phone, address } = req.body;
+    const { shop_id, vendor_id ,adminId} = req.query;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
+    name = name.trim();
+    const file = req.file;
     try {
-        let { name, email, phone, address } = req.body;
-        const { shop_id, vendor_id } = req.query;
-        name = name.trim();
-        const file = req.file;
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
 
         if (!name || !email || !phone || !address) {
             return res.status(400).send({
@@ -197,11 +212,18 @@ const addAgent = async (req, res) => {
 
 const getAllVendors = async (req, res) => {
 
+    const shop_id = req.query.shop_id;
+    const adminId = req.query.adminId;
+    const key = req.query.search;
+    let queryFilter = undefined;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
     try {
-        const shop_id = req.query.shop_id;
-        const key = req.query.search;
-        let queryFilter = undefined;
 
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+        
         if (!shop_id) {
             return res.status(400).send({ status: false, message: "Missing shop id" })
         }
@@ -239,10 +261,19 @@ const getAllVendors = async (req, res) => {
 
 const getallAgents = async (req, res) => {
 
+    let { shop_id, key, statustype ,adminId} = req.query;
+    let status = [];
+    let queryFilter = undefined;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
     try {
-        let { shop_id, key, statustype } = req.query;
-        let status = [];
-        let queryFilter = undefined;
+
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
+
         if (statustype === "" || statustype === null || statustype === undefined) {
             status = [1, 0]
         } else {
@@ -287,10 +318,16 @@ const getallAgents = async (req, res) => {
 
 const updateAgentStatus = async (req, res) => {
 
-    let { agentId, shopId, status } = req.query
+    let { agentId, shopId, status ,adminId} = req.query
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
     status = parseInt(status)
 
     try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
         if (!agentId || !shopId) {
             return res.status(400).send({ status: false, message: "Missing details" })
         }
@@ -313,10 +350,16 @@ const updateAgentStatus = async (req, res) => {
 
 const updateVendorStatus = async (req, res) => {
 
-    let { vendorId, shopId, status } = req.query
+    let { vendorId, shopId, status,adminId } = req.query
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
     status = parseInt(status)
 
     try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
         if (!vendorId || !shopId) {
             return res.status(400).send({ status: false, message: "Missing details" })
         }
@@ -342,11 +385,16 @@ const addInventory = async (req, res) => {
 
     try {
         const { adminId, vendorId, agentId, shop_id, type } = req.query
+        let token = req.headers['x-access-token'] || req.headers.authorization;
         const body = req.body;
-        console.log("body", body)
         let totalPrice = 0
         let resultArray = [];
         let json = undefined;
+
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
         if (!body) {
             return res.status(400).send({ message: "Misiing fields", success: false })
         }
@@ -822,17 +870,22 @@ const barCodeProduct = async (req, res) => {
 
 const viewVendorAgent = async (req, res) => {
 
-    const { agentId, vendorId, shop_id, key } = req.query
+    const { agentId, vendorId, shop_id, key ,adminId} = req.query
     let response = undefined;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
     let json;
     try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
         if (!key) {
             return res.status(400).send({ success: false, message: "Missing keys" })
         }
 
         if (Number(key) === 1) {
             response = await Vendor.findOne({ vendorId: vendorId, shopId: shop_id })
-            console.log("response", response)
             json = {
                 id: response.vendorId,
                 name: response.name,
@@ -950,11 +1003,17 @@ const getAllRequstedOrders = async (req, res) => {
 
 const searchagentandvendors = async (req, res) => {
     const { adminId, key } = req.query;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
     let vendorId = [];
     let venMp = new Map();
     let agentMap = new Map();
 
     try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
         if (!adminId || !key) {
             return res.status(400).send({ success: false, message: "Missing credentials" });
         }

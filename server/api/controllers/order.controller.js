@@ -3,15 +3,22 @@ const ManualOrder = require('../models/manualorder.model.js')
 const Cart = require("../models/cart.model.js")
 const Product = require('../models/product.model.js')
 const Whishlists = require('../models/whishlist.model.js')
-const { getNextSequentialId } = require('../utils/helper.js');
+const { getNextSequentialId, checkAutorized } = require('../utils/helper.js');
 
 
 const createOrder = async (req, res) => {
 
     try {
 
-        const { receivedData, cgst, sgst, initialDeposit, orderedPrice, username, extrathings, extraprice, notes, discount, status, paid, order_method, deliver_date, phone ,paymentmethod} = req.body
+        const { receivedData, cgst, sgst, initialDeposit, orderedPrice, username, extrathings, extraprice, notes, discount, status, paid, order_method, deliver_date, phone, paymentmethod } = req.body
         const { userId, type, shop_id, adminId, tokenId } = req.query
+
+        let token = req.headers['x-access-token'] || req.headers.authorization;
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
         let orderId = await getNextSequentialId("ORDER");
 
         const order = await Order.create({
@@ -33,7 +40,7 @@ const createOrder = async (req, res) => {
             orderedPrice: orderedPrice,
             paid: paid || false,
             order_method: order_method,
-            paymentmethod:paymentmethod || "offline",
+            paymentmethod: paymentmethod || "offline",
             deliver_date: deliver_date,
             phone: Number(phone)
         })
@@ -130,9 +137,12 @@ const getAllOrders = async (req, res) => {
     try {
         let orders = undefined;
         let ordermethod = [];
-        let { status, shopId, type, key, userId, limit, offset, ordertype } = req.query;
+        let { status, shopId, type, key, userId, limit, offset, ordertype, adminId } = req.query;
         limit = parseInt(limit)
         offset = parseInt(offset)
+        let token = req.headers['x-access-token'] || req.headers.authorization;
+
+        let isCheck = await checkAutorized(token, adminId)
 
         if (ordertype === "") {
             ordermethod = ["direct", "ordered"]
@@ -141,6 +151,9 @@ const getAllOrders = async (req, res) => {
         }
 
         if (status) {
+            if (!isCheck.success) {
+                return res.status(400).send(isCheck);
+            }
             orders = await Order.find({ shop_id: shopId, type: type, order_method: { $in: ordermethod }, status: { $in: [0, -1, 1, 2, 3, 4] }, orderId: { $regex: key, $options: 'i' } }).sort({ _id: -1 })
                 .skip(offset)
                 .limit(limit);
@@ -168,14 +181,27 @@ const getSingleOrder = async (req, res) => {
     try {
 
         const orderId = req.params.orderId;
+        const adminId = req.params.adminId;
+        let token = req.headers['x-access-token'] || req.headers.authorization;
 
-        const orders = await Order.findOne({ orderId: orderId })
+        try {
+            let isCheck = await checkAutorized(token, adminId)
+            if (!isCheck.success) {
+                return res.status(400).send(isCheck);
+            }
+            const orders = await Order.findOne({ orderId: orderId })
+            if (!orders) {
+                return res.status(400).send({ success: false, message: "No Order Found" })
+            }
 
-        if (!orders) {
-            return res.status(400).send({ success: false, message: "No Order Found" })
+            return res.status(200).send({ success: true, message: "Get Single Order", data: orders })
+
+        } catch (error) {
+            console.log(error.stack);
+            return res.status(500).send({ message: "Internal Server Error", error: error.stack });
         }
 
-        return res.status(200).send({ success: true, message: "Get Single Order", data: orders })
+
     } catch (error) {
         console.log(error.stack);
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
@@ -359,13 +385,18 @@ const manualReqOrder = async (req, res) => {
 
 const requestOrders = async (req, res) => {
 
-    let { type, key, limit, offset } = req.query;
+    let { type, key, limit, offset,adminId } = req.query;
     type = parseInt(type)
     limit = parseInt(limit) || 10
     offset = parseInt(offset) || 0
-
+    let token = req.headers['x-access-token'] || req.headers.authorization;
 
     try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
         if (!type) {
             return res.status(400).send({ success: false, message: "Missing Credentials" })
         }
@@ -397,8 +428,15 @@ const acceptrejectorder = async (req, res) => {
     let { adminId, type, tokenId, accept } = req.query
     type = parseInt(type)
     accept = parseInt(accept)
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
 
     try {
+
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
 
         if (!type || !tokenId) {
             return res.status(400).send({ success: false, message: "Missing Credentials" })
@@ -409,12 +447,12 @@ const acceptrejectorder = async (req, res) => {
 
         const updateStatus = await ManualOrder.updateOne({ tokenId: tokenId, type: type }, { $set: { accept: accept } })
 
-        if (accept===1 && updateStatus.modifiedCount === 1) {
+        if (accept === 1 && updateStatus.modifiedCount === 1) {
             return res.status(200).send({ success: true, message: "Order Accepted" })
-        } else if (accept===-1 && updateStatus.modifiedCount === 1){
-            return res.status(200).send({ success: false, message: "Order Rejected"})
-        }else{
-            return res.status(400).send({ success: false, message: "Error for accepting order"})
+        } else if (accept === -1 && updateStatus.modifiedCount === 1) {
+            return res.status(200).send({ success: false, message: "Order Rejected" })
+        } else {
+            return res.status(400).send({ success: false, message: "Error for accepting order" })
         }
 
     } catch (error) {

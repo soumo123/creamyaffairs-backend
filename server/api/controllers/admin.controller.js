@@ -5,7 +5,7 @@ const Admin = require('../models/admin.model.js')
 const Images = require('../models/images.model.js')
 const Product = require('../models/product.model.js')
 const uploadFileToS3 = require('../utils/fileUpload.js')
-const { getNextSequentialId, checkPassword, getLastTypeId } = require('../utils/helper.js')
+const { getNextSequentialId, checkPassword, getLastTypeId, checkAutorized } = require('../utils/helper.js')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const Shops = require('../models/shop.model.js')
@@ -173,8 +173,14 @@ const getAllImages = async (req, res) => {
 const getuserDetailsByAdmin = async (req, res) => {
 
     const type = Number(req.query.type)
+    const adminId = req.query.adminId;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
 
     try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
 
         const users = await User.find({ type: type });
 
@@ -203,9 +209,14 @@ const userSpecificDetails = async (req, res) => {
 
     const userId = req.query.userId;
     const type = Number(req.query.type);
+    const adminId = req.query.adminId;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
     let orders = []
     try {
-
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
         //get all add to cart products //
 
         const carts = await Cart.find({ type: type, userId: userId })
@@ -549,8 +560,11 @@ const getAllReviews = async (req, res) => {
 
 const dashboardContents = async (req, res) => {
     const shop_id = req.query.shop_id;
+    const adminId = req.query.adminId;
     const type = Number(req.query.type);
     const year = req.query.year; // Assuming year is passed as a query parameter
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
 
     // Initialize an object to hold the counts, revenue, and orders for each month
     const monthData = {
@@ -569,6 +583,11 @@ const dashboardContents = async (req, res) => {
     };
 
     try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
         const users = await User.find({ type: type });
         const products = await Product.find({ type: type });
 
@@ -732,9 +751,17 @@ const adminSignin = async (req, res) => {
 const getAllNotifications = async (req, res) => {
 
     let { adminId, type } = req.query
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
+
     let mp = new Map()
 
     try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
         if (!adminId || !type) {
             return res.status(400).send({ success: false, message: "Missing Credentials" })
         }
@@ -800,8 +827,15 @@ const updateNotification = async (req, res) => {
 
 const countNotification = async (req, res) => {
     const { adminId, type } = req.query
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
 
     try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+    
         if (!adminId || !type) {
             return res.status(400).send({ success: false, message: "Missing Credentials" })
         }
