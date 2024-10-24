@@ -127,13 +127,13 @@ const updateProduct = async (req, res, next) => {
         zomato_service_price, swiggy_service_price, zepto_service_price, blinkit_service_price, product_type
     } = req.body;
 
+    const adminId = req.params.adminId
     let token = req.headers['x-access-token'] || req.headers.authorization;
     let isCheck = await checkAutorized(token, adminId)
     if (!isCheck.success) {
         return res.status(400).send(isCheck);
     }
 
-    const adminId = req.params.adminId
     const productId = req.query.productId
     let files = req.files;
     console.log("files", files)
@@ -680,8 +680,8 @@ const deleteTags = async (req, res) => {
 const getAllTags = async (req, res) => {
 
     const type = Number(req.query.type);
-    const limit = Number(req.query.limit)
-    const offset = Number(req.query.offset)
+    const limit = Number(req.query.limit) || 100
+    const offset = Number(req.query.offset) || 0
 
     const adminId = req.query.userId;
     let tags = undefined
