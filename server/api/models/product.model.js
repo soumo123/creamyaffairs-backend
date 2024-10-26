@@ -6,6 +6,9 @@ const productSchema = new mongoose.Schema({
         type: String,
         // required: true
     },
+    transaction_id:{
+        type:String
+    },
     type:{
         type:Number,
     },
@@ -25,9 +28,28 @@ const productSchema = new mongoose.Schema({
     other_description2:{
         type:String
     },
-    weight:{
-        type:Array,
-        default:[]
+    weight: {
+        type: [
+            {
+                weight: {
+                    type: Number,
+                    required: true // Use required if this field must always have a value
+                },
+                price: {
+                    type: Number,
+                    required: true
+                },
+                stock: {
+                    type: Number,
+                    required: true
+                },
+                purchaseprice: {
+                    type: Number,
+                    required: true
+                },
+            }
+        ],
+        _id: false // Prevent _id creation
     },
     unit:{
         type:String,

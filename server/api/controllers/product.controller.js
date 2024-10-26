@@ -3,6 +3,7 @@ const Product = require('../models/product.model.js')
 const Tags = require('../models/tags.model.js')
 const Whishlists = require('../models/whishlist.model.js')
 const Expiry = require('../models/expiredproducts.model.js')
+const Distribute = require('../models/distribute-order.model.js')
 const uploadFileToS3 = require('../utils/fileUpload.js')
 const { getNextSequentialId, checkPassword, getLastAndIncrementId, generateAndUploadBarcode, checkAutorized } = require('../utils/helper.js')
 const dotenv = require('dotenv');
@@ -124,7 +125,7 @@ const updateProduct = async (req, res, next) => {
 
     let { name, description, other_description1, other_description2, weight, unit, type, color, size, visiblefor, deliverydays, tags, isBestSelling, isFeatured,
         isTopSelling, isBranded, isOffered, purchase_price, delivery_partner, selling_price_method, zomato_service, swiggy_service, zepto_service, blinkit_service,
-        zomato_service_price, swiggy_service_price, zepto_service_price, blinkit_service_price, product_type
+        zomato_service_price, swiggy_service_price, zepto_service_price, blinkit_service_price, product_type, transaction_id
     } = req.body;
 
     const adminId = req.params.adminId
@@ -695,8 +696,8 @@ const getAllTags = async (req, res) => {
             tags = await Tags.aggregate([
                 {
                     $match: {
-                        type: type, 
-                        userId: adminId 
+                        type: type,
+                        userId: adminId
                     }
                 },
                 {
@@ -943,7 +944,8 @@ const adminProducts = async (req, res) => {
     const lastPrice = Number(req.query.lastprice);
     const limit = Number(req.query.limit);
     const offset = Number(req.query.offset);
-    const expired = req.query.expired
+    const expired = req.query.expired;
+    const action = Number(req.query.action)
 
     let token = req.headers['x-access-token'] || req.headers.authorization;
     let isCheck = await checkAutorized(token, adminId)
@@ -964,9 +966,12 @@ const adminProducts = async (req, res) => {
         }
     }
 
-    console.log("expiremthods-----------", expiremthods)
     try {
+
         let query = { adminId: adminId, type: type, expired: { $in: expiremthods } }
+        if (action === 1) {
+            query = { ...query, active: 1 }
+        }
         if (!keyword && !startPrice && !lastPrice) {
             // 1. If no keyword and no startprice and lastprice, then get all products
             query = query
@@ -1474,6 +1479,94 @@ const getqrProducts = async (req, res) => {
     }
 }
 
+
+const updatePurchasePrice = async (req, res) => {
+    let { productId, adminId, transaction_id, type } = req.query;
+    let body = req.body;
+    type = parseInt(type)
+
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+    let isCheck = await checkAutorized(token, adminId)
+
+
+    try {
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
+        await Distribute.updateOne(
+            { productId: productId, transaction_id: transaction_id, "products.weight": body.weight },
+            [
+                {
+                    // Update the price in the products array
+                    $set: {
+                        products: {
+                            $map: {
+                                input: "$products",
+                                as: "product",
+                                in: {
+                                    $cond: [
+                                        {
+                                            $and: [
+                                                { $eq: ["$$product.productId", productId] },
+                                                { $eq: ["$$product.weight", body.weight] }
+                                            ]
+                                        },
+                                        { $mergeObjects: ["$$product", { price: body.purchase_price }] }, // Update price
+                                        "$$product" // Keep product unchanged
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    // Recalculate the totalAmount based on updated products array
+                    $set: {
+                        totalAmount: {
+                            $sum: {
+                                $map: {
+                                    input: "$products",
+                                    as: "product",
+                                    in: { $multiply: ["$$product.quantity", "$$product.price"] }
+                                }
+                            }
+                        }
+                    }
+
+                },
+                {
+                    // Update balance based on new totalAmount minus pay
+                    $set: {
+                        balance: { $subtract: ["$totalAmount", "$pay"] }
+                    }
+                }
+            ]
+        );
+
+        await Product.updateOne(
+            { productId: productId, adminId: adminId },
+            {
+                $set: { "weight.$[element].purchaseprice": body.purchase_price }
+            },
+            {
+                arrayFilters: [{ "element.weight": body.weight }]
+            }
+
+        )
+
+        return res.status(200).send({ message: "Updated", success: true })
+
+
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).send({ message: "Internal Server Error", error: error.message });
+    }
+
+
+}
+
 module.exports = {
     createProduct,
     updateProduct,
@@ -1497,5 +1590,6 @@ module.exports = {
     updateCategoryStatus,
     productPriceVariation,
     expiryproducts,
-    getqrProducts
+    getqrProducts,
+    updatePurchasePrice
 } 

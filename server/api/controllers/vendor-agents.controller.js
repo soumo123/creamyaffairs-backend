@@ -410,6 +410,7 @@ const addInventory = async (req, res) => {
             json = {
                 productId: lastId,
                 shop_id: Number(shop_id),
+                transaction_id:transctionId,
                 type: Number(type),
                 agentId: agentId,
                 name: ele.productName,
@@ -897,7 +898,7 @@ const viewVendorAgent = async (req, res) => {
         } else if (Number(key) === 2) {
             response = await Agent.findOne({ vendorId: vendorId, shopId: shop_id, agentId: agentId })
             json = {
-                id: response.vendorId,
+                id: `${response.vendorname} (${response.vendorId})`,
                 ag_id: response.agentId,
                 name: response.name,
                 email: response.email,
