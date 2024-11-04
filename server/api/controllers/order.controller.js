@@ -132,6 +132,133 @@ const createOrder = async (req, res) => {
 }
 
 
+
+const createOnlineOrder = async (req, res) => {
+
+    try {
+
+        const { receivedData, initialDeposit, orderedPrice, username, extrathings, extraprice, notes, discount, status, paid, order_method, deliver_date, phone, paymentmethod,plat_type } = req.body
+        const { userId, type, shop_id, adminId, tokenId } = req.query
+
+        let token = req.headers['x-access-token'] || req.headers.authorization;
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
+        let orderId = await getNextSequentialId("ORDER");
+
+        const order = await Order.create({
+            orderId: orderId,
+            adminId: adminId || "",
+            username: username || "",
+            extrathings: extrathings || "",
+            extraprice: extraprice || 0,
+            notes: notes || "",
+            discount: discount || 0,
+            userId,
+            shopId: shop_id,
+            type,
+            products: receivedData,
+            status: status || 0,
+            initialDeposit: initialDeposit,
+            orderedPrice: orderedPrice,
+            paid: paid || false,
+            order_method: order_method,
+            plat_type:plat_type,
+            paymentmethod: "online",
+            deliver_date: deliver_date,
+            phone: Number(phone)
+        })
+
+        for (const item of receivedData) {
+            const { productId, weight, itemCount } = item;
+            await Product.updateOne(
+                {
+                    productId: productId,
+                    'weight.weight': weight
+                },
+                {
+                    $inc: { 'weight.$.stock': -itemCount }
+                }
+            );
+
+            // Check if the stock of the product's specific weight is 4, then update process
+            const product = await Product.findOne(
+                {
+                    productId: productId,
+                    'weight.weight': weight,
+                    'weight.stock': 4
+                }
+            );
+
+            if (product) {
+                await Product.updateOne(
+                    {
+                        productId: productId
+                    },
+                    {
+                        $set: { process: 0 }
+                    }
+                );
+            }
+
+
+            await Whishlists.updateOne(
+                {
+                    productId: productId,
+                    weight: weight
+                },
+                {
+                    $inc: { stock: -itemCount }
+                }
+            )
+
+
+            const cartItems = await Cart.find({ type: Number(type), "products.productId": productId, "products.weight": weight }).exec();
+            for (const cart of cartItems) {
+                for (const product of cart.products) {
+                    if (product.productId === productId && product.weight === weight) {
+
+                        // Update Cart
+                        await Cart.updateMany(
+                            { type: Number(type), "products.productId": productId, "products.weight": weight },
+                            {
+                                $inc: {
+                                    "products.$[elem].stock": -itemCount,
+                                }
+                            },
+                            {
+                                arrayFilters: [{ "elem.productId": productId, "elem.weight": weight }]
+                            }
+                        );
+                    }
+                }
+            }
+
+
+        }
+
+
+        const updateManualOrder = await ManualOrder.updateOne({ tokenId: tokenId }, { $set: { status: 1 } })
+
+
+        // const removeCart = await Cart.updateOne({ userId: userId }, { $set: { products: [] } })
+
+        return res.status(201).send({
+            success: true,
+            message: "Order Created Successfully"
+        })
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+}
+
+
+
 const getAllOrders = async (req, res) => {
 
     try {
@@ -462,4 +589,4 @@ const acceptrejectorder = async (req, res) => {
 }
 
 
-module.exports = { createOrder, getAllOrders, getSingleOrder, updateOrder, cancelOrder, countOrders, manualReqOrder, requestOrders, acceptrejectorder }
+module.exports = { createOrder, getAllOrders, getSingleOrder, updateOrder, cancelOrder, countOrders, manualReqOrder, requestOrders, acceptrejectorder ,createOnlineOrder}

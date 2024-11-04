@@ -5,10 +5,11 @@ const Admin = require('../models/admin.model.js')
 const Images = require('../models/images.model.js')
 const Product = require('../models/product.model.js')
 const uploadFileToS3 = require('../utils/fileUpload.js')
-const { getNextSequentialId, checkPassword, getLastTypeId, checkAutorized } = require('../utils/helper.js')
+const { getNextSequentialId, checkPassword, getLastTypeId, checkAutorized, getLastAndIncrementId1 } = require('../utils/helper.js')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const Shops = require('../models/shop.model.js')
+const Platform = require("../models/platform.model.js")
 const Settings = require('../models/settings.model.js')
 const Tax = require('../models/Tax.model.js')
 const Notification = require('../models/notification.model.js')
@@ -622,6 +623,8 @@ const dashboardContents = async (req, res) => {
             totalRevenue: monthData[month].totalRevenue,
         }));
 
+        const totalRevenue = result.reduce((sum, item) => sum + item.totalRevenue, 0);
+
         // Sort the result by month
         const monthOrder = [
             "January", "February", "March", "April", "May", "June",
@@ -635,6 +638,7 @@ const dashboardContents = async (req, res) => {
             users: users.length,
             products: products.length,
             orders: orders.length,
+            totalRevenue: totalRevenue,
             result
         });
 
@@ -643,6 +647,94 @@ const dashboardContents = async (req, res) => {
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
     }
 };
+
+const dashboardOnlinegraph = async (req, res) => {
+
+    const platformId = parseInt(req.query.platformId, 10);
+    const adminId = req.query.adminId;
+    const shop_id = req.query.shop_id;
+    const type = Number(req.query.type);
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1; // JavaScript months are zero-based, so +1 for correct month number
+
+
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+    try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
+        const revenueData = await Order.aggregate([
+            {
+                $match: {
+                    'plat_type.value': platformId,
+                    created_at: { $lte: currentDate } // Exclude future months
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        month: { $month: '$created_at' },
+                        year: { $year: '$created_at' }
+                    },
+                    totalRevenue: { $sum: '$orderedPrice' },
+                    totalOrders: { $sum: 1 }
+                }
+            },
+            {
+                $sort: { '_id.year': 1, '_id.month': 1 }
+            }
+        ]);
+
+        // Format the results for each month
+        const results = [];
+        let previousMonthRevenue = 0;
+
+        for (let i = 0; i < currentMonth; i++) {
+            const monthData = revenueData.find(item => item._id.month === i + 1 && item._id.year === currentYear);
+            const totalRevenue = monthData ? monthData.totalRevenue : 0;
+            const totalOrders = monthData ? monthData.totalOrders : 0;
+            const revDiff = previousMonthRevenue - totalRevenue;
+            const diffPercentage = previousMonthRevenue
+                ? ((revDiff / previousMonthRevenue) * 100).toFixed(2)
+                : 0;
+
+            // Apply color coding based on the percentage difference
+            let colorCode;
+            if (diffPercentage >= 50) {
+                colorCode = '#eb2d23'; // Red for >= 50%
+            } else if (diffPercentage > 0 && diffPercentage < 50) {
+                colorCode = '#FFA500'; // Orange for < 50%
+            } else {
+                colorCode = '#4ab548'; // Green for 0% or negative
+            }
+
+            results.push({
+                month: new Date(currentYear, i).toLocaleString('default', { month: 'long' }),
+                totalOrders: totalOrders,
+                totalRevenue: totalRevenue,
+                revDiff: revDiff,
+                diffpercentage: parseFloat(diffPercentage),
+                color_code: colorCode
+            });
+
+            previousMonthRevenue = totalRevenue;
+        }
+        // results.reverse();
+
+       return res.json({ result: results, totalrevenue: revenueData.reduce((sum, data) => sum + data.totalRevenue, 0) });
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+
+}
+
+
 
 const updateTax = async (req, res) => {
 
@@ -692,7 +784,7 @@ const getTax = async (req, res) => {
 
 const adminSignin = async (req, res) => {
 
-    const {email,password} = req.body
+    const { email, password } = req.body
 
     try {
         if (!email || !password) {
@@ -768,7 +860,7 @@ const getAllNotifications = async (req, res) => {
 
         const agents = await Agent.find({})
 
-        const result = await Notification.find({ checked:false,adminId: adminId, type: Number(type) }).sort({_id:-1})
+        const result = await Notification.find({ checked: false, adminId: adminId, type: Number(type) }).sort({ _id: -1 })
 
         if (result.length === 0) {
             return res.status(400).send({ message: "No Notification Found", success: false })
@@ -776,23 +868,23 @@ const getAllNotifications = async (req, res) => {
 
         agents.forEach(item => {
             mp.set(item.agentId, {
-               ag_id:item.agentId,
-               name:item.name,
-               email:item.email,
-               phone:item.phone
+                ag_id: item.agentId,
+                name: item.name,
+                email: item.email,
+                phone: item.phone
             });
         });
         let arr = result.map((ele) => ({
             _id: ele._id,
             message: ele.message,
-            productId:ele.productId,
-            productname:ele.productname,
-            weight:ele.weight,
-            stock:ele.stock,
-            price:ele.price,
-            purchaseprice:ele.purchaseprice,
+            productId: ele.productId,
+            productname: ele.productname,
+            weight: ele.weight,
+            stock: ele.stock,
+            price: ele.price,
+            purchaseprice: ele.purchaseprice,
             noti_type: ele.notification_type,
-            agent_details:mp.get(ele.agentId)
+            agent_details: mp.get(ele.agentId)
         }))
 
 
@@ -835,7 +927,7 @@ const countNotification = async (req, res) => {
         if (!isCheck.success) {
             return res.status(400).send(isCheck);
         }
-    
+
         if (!adminId || !type) {
             return res.status(400).send({ success: false, message: "Missing Credentials" })
         }
@@ -852,24 +944,24 @@ const countNotification = async (req, res) => {
     }
 }
 
-const deleteNotification = async(req, res) => {
+const deleteNotification = async (req, res) => {
 
-    let {adminId,id,type} = req.query
+    let { adminId, id, type } = req.query
     type = parseInt(type)
     let query = undefined
     try {
 
-        if(!adminId){
+        if (!adminId) {
             return res.status(400).send({ success: false, message: "Missing Credentials" })
         }
-        if(type===1){
-            query = {adminId:adminId,_id:id}
-        }else if(type===2){
-            query = {adminId:adminId}
+        if (type === 1) {
+            query = { adminId: adminId, _id: id }
+        } else if (type === 2) {
+            query = { adminId: adminId }
         }
         const deletedata = await Notification.deleteMany(query)
 
-        return res.status(200).send({success:true,message:"Notification Deleted Successfully"})
+        return res.status(200).send({ success: true, message: "Notification Deleted Successfully" })
 
     } catch (error) {
         console.log(error.stack);
@@ -878,4 +970,148 @@ const deleteNotification = async(req, res) => {
 
 }
 
-module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, updateTax, getTax, getAllNotifications, updateNotification, countNotification, adminSignin,deleteNotification }
+
+const addPlatform = async (req, res) => {
+    const { adminId, shop_id } = req.query
+    const body = req.body;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
+
+    try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+        if (!adminId) {
+            return res.status(400).send({ success: false, message: "Missing Credentials" })
+        }
+
+        if (!body.name) {
+            return res.status(400).send({ success: false, message: "Platform name is missing" })
+        }
+
+        let lastId = await getLastAndIncrementId1("");
+
+        const result = await Platform.create({
+            label: body.name,
+            active: body.active,
+            value: lastId,
+            shop_id: shop_id,
+            adminId: adminId
+        })
+        return res.status(201).send({ message: "platform added successfully", success: true });
+
+
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+}
+const editPlatform = async (req, res) => {
+    const { adminId, shop_id, plat_id } = req.query
+    const body = req.body;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
+
+    try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+        if (!adminId) {
+            return res.status(400).send({ success: false, message: "Missing Credentials" })
+        }
+
+        if (!body.name) {
+            return res.status(400).send({ success: false, message: "Platform name is missing" })
+        }
+
+        let lastId = await getLastAndIncrementId1("");
+
+        const result = await Platform.updateOne({ value: Number(plat_id), adminId: adminId }, {
+            $set: {
+                label: body.name,
+                active: body.active
+            }
+        }
+
+        )
+        return res.status(201).send({ message: "platform update successfully", success: true });
+
+
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+}
+
+const updateStatusPlatform = async (req, res) => {
+    const { adminId, shop_id, plat_id } = req.query
+    const body = req.body;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
+
+    try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+        if (!adminId) {
+            return res.status(400).send({ success: false, message: "Missing Credentials" })
+        }
+
+        const result = await Platform.updateOne({ value: Number(plat_id), adminId: adminId }, {
+            $set: {
+                active: body.active,
+            }
+        }
+
+        )
+        return res.status(201).send({ message: "platform update successfully", success: true });
+
+
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+}
+
+const getAllPlatforms = async (req, res) => {
+    let { adminId, shop_id, action } = req.query
+    let query = {}
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+    action = parseInt(action)
+
+    try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+        query = { adminId: adminId, shop_id: shop_id }
+        if (action === 1) {
+            query = { ...query, active: true }
+        }
+        const result = await Platform.find(query)
+
+        if (result.length === 0) {
+            return res.status(400).send({ message: "No data found", data: [] });
+        }
+        return res.status(200).send({ message: "Platforms", data: result });
+
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+}
+
+
+
+module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, updateTax, getTax, getAllNotifications, updateNotification, countNotification, adminSignin, deleteNotification, getAllPlatforms, addPlatform, editPlatform, updateStatusPlatform , dashboardOnlinegraph }

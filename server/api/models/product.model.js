@@ -65,34 +65,36 @@ const productSchema = new mongoose.Schema({
         type:String
     },
     selling_price_method:{
-        type:String
-    },
-    zomato_service:{
-        type:Boolean
-    },
-    swiggy_service:{
-        type:Boolean
-    },
-    zepto_service:{
-        type:Boolean
-    },
-    blinkit_service:{
-        type:Boolean
-    },
-    zomato_service_price:{
-        type:Number
-    },
-    swiggy_service_price:{
-        type:Number
-    },
-    zepto_service_price:{
-        type:Number
-    },
-    blinkit_service_price:{
-        type:Number
+        type:Array
     },
     product_type:{
         type:Number  // 0 - Vrg , 1 - Non-veg and 2- Other//
+    },
+
+    platforms: {
+        type: [
+            {
+                weight: {
+                    type: Number
+                   
+                },
+                price: {
+                    type: Number
+                },
+                value: {
+                    type: Number
+                },
+                label: {
+                    type: String
+                },
+                active:{
+                    type:Boolean,
+                    default:true
+                }
+            }
+        ],
+        _id: false ,// Prevent _id creation
+        default:[]
     },
 
     tags:{

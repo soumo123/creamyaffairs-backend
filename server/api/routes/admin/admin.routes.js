@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { signIn, signUp,getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, getAdmin, createShop, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, getTax, updateTax,getAllNotifications,updateNotification, countNotification ,adminSignin,deleteNotification} = require('../../controllers/admin.controller.js');
+const { signIn, signUp,getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, getAdmin, createShop, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, getTax, updateTax,getAllNotifications,updateNotification, countNotification ,adminSignin,deleteNotification, getAllPlatforms, addPlatform, editPlatform, updateStatusPlatform, dashboardOnlinegraph} = require('../../controllers/admin.controller.js');
 const {ensureAuthenticated} = require('../../middleware/jwtVerify.js')
 const multer = require('multer');
 
@@ -29,6 +29,8 @@ router.get("/get_all_shops",getAllShopsForParticularOwner)
 
 
 router.get("/getdashbordDetails",dashboardContents)
+router.get("/graphs",dashboardOnlinegraph)
+
 
 
 router.put('/update_tax',updateTax)
@@ -45,5 +47,11 @@ router.get('/count_notification',countNotification)
 
 router.post('/signinadmin',adminSignin)
 router.delete('/delete_notification',deleteNotification)
+
+router.post('/addPlatform',addPlatform)
+router.put('/editPlatform',editPlatform)
+router.put('/updatestatusplatform',updateStatusPlatform)
+router.get("/platforms",getAllPlatforms)
+
 
 module.exports = router

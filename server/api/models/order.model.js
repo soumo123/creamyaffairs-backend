@@ -66,6 +66,10 @@ const orderSchema = new mongoose.Schema({
         type: String,
         default: "offline"
     },
+    plat_type:{
+        type:Object,
+        default:{}
+    },
     status: {
         type: Number,
         default: 0

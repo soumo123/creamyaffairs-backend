@@ -124,9 +124,11 @@ const createProduct = async (req, res, next) => {
 const updateProduct = async (req, res, next) => {
 
     let { name, description, other_description1, other_description2, weight, unit, type, color, size, visiblefor, deliverydays, tags, isBestSelling, isFeatured,
-        isTopSelling, isBranded, isOffered, purchase_price, delivery_partner, selling_price_method, zomato_service, swiggy_service, zepto_service, blinkit_service,
-        zomato_service_price, swiggy_service_price, zepto_service_price, blinkit_service_price, product_type, transaction_id
+        isTopSelling, isBranded, isOffered, purchase_price, delivery_partner, product_type, transaction_id,platforms
     } = req.body;
+
+    let selling_price_method= JSON.parse(req.body.selling_price_method1)
+    platforms = JSON.parse(platforms)
 
     const adminId = req.params.adminId
     let token = req.headers['x-access-token'] || req.headers.authorization;
@@ -205,14 +207,7 @@ const updateProduct = async (req, res, next) => {
                 purchase_price: purchase_price,
                 delivery_partner: delivery_partner,
                 selling_price_method: selling_price_method,
-                zomato_service: zomato_service,
-                swiggy_service: swiggy_service,
-                zepto_service: zepto_service,
-                blinkit_service: blinkit_service,
-                zomato_service_price: Number(zomato_service_price),
-                swiggy_service_price: Number(swiggy_service_price),
-                zepto_service_price: Number(zepto_service_price),
-                blinkit_service_price: Number(blinkit_service_price),
+                platforms:platforms,
                 product_type: Number(product_type),
                 tags: newTag,
                 visiblefor: visiblefor,
@@ -283,14 +278,7 @@ const updateProduct = async (req, res, next) => {
                     purchase_price: purchase_price,
                     delivery_partner: delivery_partner,
                     selling_price_method: selling_price_method,
-                    zomato_service: zomato_service,
-                    swiggy_service: swiggy_service,
-                    zepto_service: zepto_service,
-                    blinkit_service: blinkit_service,
-                    zomato_service_price: Number(zomato_service_price),
-                    swiggy_service_price: Number(swiggy_service_price),
-                    zepto_service_price: Number(zepto_service_price),
-                    blinkit_service_price: Number(blinkit_service_price),
+                    platforms:platforms,
                     product_type: Number(product_type),
                     tags: newTag,
                     visiblefor: visiblefor,
@@ -946,6 +934,7 @@ const adminProducts = async (req, res) => {
     const offset = Number(req.query.offset);
     const expired = req.query.expired;
     const action = Number(req.query.action)
+    const plat_type = Number(req.query.plat_type)|| ""
 
     let token = req.headers['x-access-token'] || req.headers.authorization;
     let isCheck = await checkAutorized(token, adminId)
@@ -962,13 +951,16 @@ const adminProducts = async (req, res) => {
             expiremthods.push(false)
         } else {
             expiremthods.push(true)
-
         }
     }
-
     try {
-
+        console.log("plat_type",plat_type)
         let query = { adminId: adminId, type: type, expired: { $in: expiremthods } }
+
+        if(plat_type){
+            query  = {...query , "platforms.value": plat_type}
+        }
+        console.log("query",query)
         if (action === 1) {
             query = { ...query, active: 1 }
         }

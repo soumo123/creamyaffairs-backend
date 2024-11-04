@@ -10,6 +10,7 @@ const Agent = require("../models/agent.model.js")
 const Distribute = require('../models/distribute-order.model.js')
 const RequestOrder = require('../models/requestorder.model.js')
 const ManualOrder = require('../models/manualorder.model.js')
+const Platform = require('../models/platform.model.js')
 const jwt = require('jsonwebtoken')
 
 
@@ -78,12 +79,18 @@ const getNextSequentialId = async (ids) => {
     lastId = await ManualOrder.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.tokenId ? lastId.tokenId : "");
   }
+  if(ids===""){
+    idPrefix = "";
+    lastId = await Platform.findOne().sort({ _id: -1 });
+    existingIds.push(lastId && lastId.value ? lastId.value : "");
+  }
   // Uncomment the else block if needed
   // else {
   //   idPrefix = "AKPD";
   //   lastId = await Product.findOne().sort({ _id: -1 });
   //   existingIds.push(lastId && lastId.productId ? lastId.productId : "");
   // }
+  console.log("existingIds",existingIds)
 
   const maxNumericPart = existingIds.reduce((max, id) => {
     if (!id || !id.startsWith(idPrefix)) return max; // Check if id is undefined or doesn't start with idPrefix
@@ -316,6 +323,30 @@ const checkAutorized = async (token,adminId) => {
 }
 
 
+const getLastAndIncrementId1 = async () => {
+  try {
+    // Find the document with the highest ID
+    const lastTag = await Platform.aggregate([
+      { $group: { _id: null, value: { $max: "$value" } } }
+    ]);
+
+    // If there are no tags yet, start with ID 1
+    let newId = 1;
+
+    // If there are tags, increment the maximum ID by 1
+    if (lastTag.length > 0) {
+      newId = lastTag[0].value + 1;
+    }
+
+    return newId;
+  } catch (error) {
+    console.error("Error occurred while getting and incrementing the last ID:", error);
+    throw error;
+  }
+};
+
+
+
 module.exports = {
   getNextSequentialId,
   checkPassword,
@@ -324,6 +355,7 @@ module.exports = {
   getLastAdressId,
   generateAndUploadBarcode,
   checkExpiry,
-  checkAutorized
+  checkAutorized,
+  getLastAndIncrementId1
 }
 
