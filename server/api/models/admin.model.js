@@ -32,6 +32,29 @@ const adminSchema = new mongoose.Schema({
     image:{
         type: String
     },
+    identity_proof:{
+        type: String
+    },
+    city:{
+        type:String,
+        default:""
+    },
+    state:{
+        type:String,
+        default:""
+    },
+    zip:{
+        type:Number,
+        default:""
+    },
+    identity:{
+        type:String,
+        default:""
+    },
+    access:{
+        type:Object,
+        default:{}
+    },
 
     created_at: {
         type: Date,

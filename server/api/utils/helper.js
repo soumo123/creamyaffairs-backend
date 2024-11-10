@@ -12,6 +12,7 @@ const RequestOrder = require('../models/requestorder.model.js')
 const ManualOrder = require('../models/manualorder.model.js')
 const Platform = require('../models/platform.model.js')
 const jwt = require('jsonwebtoken')
+const Crypto = require('../utils/decrypt.js')
 
 
 const CheckoutAdress = require('../models/checkoutadress.model')
@@ -22,6 +23,8 @@ const path = require('path');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 dotenv.config();
+const crypto = new Crypto(process.env.DECRYPT_KEY);
+
 
 const getNextSequentialId = async (ids) => {
   let existingIds = [];
@@ -79,6 +82,11 @@ const getNextSequentialId = async (ids) => {
     lastId = await ManualOrder.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.tokenId ? lastId.tokenId : "");
   }
+  if (ids === "EMP") {
+    idPrefix = "EMP";
+    lastId = await Admin.findOne().sort({ _id: -1 });
+    existingIds.push(lastId && lastId.adminId ? lastId.adminId : "");
+  }
   if(ids===""){
     idPrefix = "";
     lastId = await Platform.findOne().sort({ _id: -1 });
@@ -111,6 +119,15 @@ const checkPassword = async (password, hashedPassword) => {
   try {
     const result = await bcrypt.compare(password, hashedPassword);
     return result;
+  } catch (error) {
+    console.error('Error comparing passwords:', error);
+    return false;
+  }
+};
+const checkPassword1 = async (password, hashedPassword) => {
+  try {
+    const result = await crypto.decrypt(hashedPassword);
+    if (result === password) return true
   } catch (error) {
     console.error('Error comparing passwords:', error);
     return false;
@@ -350,6 +367,7 @@ const getLastAndIncrementId1 = async () => {
 module.exports = {
   getNextSequentialId,
   checkPassword,
+  checkPassword1,
   getLastAndIncrementId,
   getLastTypeId,
   getLastAdressId,

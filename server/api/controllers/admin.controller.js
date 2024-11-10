@@ -5,7 +5,7 @@ const Admin = require('../models/admin.model.js')
 const Images = require('../models/images.model.js')
 const Product = require('../models/product.model.js')
 const uploadFileToS3 = require('../utils/fileUpload.js')
-const { getNextSequentialId, checkPassword, getLastTypeId, checkAutorized, getLastAndIncrementId1 } = require('../utils/helper.js')
+const { getNextSequentialId, checkPassword, getLastTypeId, checkAutorized, getLastAndIncrementId1, checkPassword1 } = require('../utils/helper.js')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const Shops = require('../models/shop.model.js')
@@ -15,12 +15,12 @@ const Tax = require('../models/Tax.model.js')
 const Notification = require('../models/notification.model.js')
 const Agent = require("../models/agent.model.js");
 const dotenv = require('dotenv');
-
+const Crypto = require('../utils/decrypt.js')
 dotenv.config();
 
 
 
-
+const crypto = new Crypto(process.env.DECRYPT_KEY);
 
 
 const signUp = async (req, res) => {
@@ -286,10 +286,28 @@ const registerAdmin = async (req, res) => {
         // Upload the file to S3
         const s3Url = await uploadFileToS3(bucketName, key, fileBuffer);
         const lastId = await getNextSequentialId("ADMIN")
-        password = await bcrypt.hash(password, 10)
+        password = await crypto.encrypt(password)
 
         const admin = await Admin.create({
-            adminId: lastId, firstname, lastname, email, password, phone, address, image: s3Url
+            adminId: lastId, firstname, lastname, email, password, phone, address, image: s3Url,
+            access: {
+                dashboard: true,
+                notification: true,
+                addprod: true,
+                products: true,
+                users: true,
+                employees: true,
+                tags: true,
+                orders: true,
+                settings: true,
+                vendor: true,
+                stocks: true,
+                trasnsaction: true,
+                tax: true,
+                expproducts: true,
+                reqorders: true,
+                platforms: true
+            }
         })
 
         return res.status(200).json({ message: 'Owner Craeted Successfully', success: true });
@@ -724,7 +742,7 @@ const dashboardOnlinegraph = async (req, res) => {
         }
         // results.reverse();
 
-       return res.json({ result: results, totalrevenue: revenueData.reduce((sum, data) => sum + data.totalRevenue, 0) });
+        return res.json({ result: results, totalrevenue: revenueData.reduce((sum, data) => sum + data.totalRevenue, 0) });
 
     } catch (error) {
         console.log(error.stack);
@@ -795,7 +813,7 @@ const adminSignin = async (req, res) => {
         if (!user) {
             return res.status(400).send({ message: "Invalid email or password", success: false })
         }
-        const isPasswordMatch = await checkPassword(password, user.password);
+        const isPasswordMatch = await checkPassword1(password, user.password);
         console.log(isPasswordMatch);
 
         if (!isPasswordMatch) {
@@ -1093,7 +1111,7 @@ const getAllPlatforms = async (req, res) => {
         if (!isCheck.success) {
             return res.status(400).send(isCheck);
         }
-        query = { adminId: adminId, shop_id: shop_id }
+        query = { shop_id: shop_id }
         if (action === 1) {
             query = { ...query, active: true }
         }
@@ -1113,5 +1131,407 @@ const getAllPlatforms = async (req, res) => {
 }
 
 
+const addEmp = async (req, res) => {
 
-module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, updateTax, getTax, getAllNotifications, updateNotification, countNotification, adminSignin, deleteNotification, getAllPlatforms, addPlatform, editPlatform, updateStatusPlatform , dashboardOnlinegraph }
+    let { firstname, lastname, phone, email, password, address, city, state, postcode, identity } = req.body
+    let { adminId, shop_id } = req.query
+    phone = parseInt(phone)
+    postcode = parseInt(postcode)
+    const passport_photo = req.files['file1'] ? req.files['file1'][0] : null;
+    const identity_proof = req.files['file2'] ? req.files['file2'][0] : null;
+
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
+
+    try {
+
+        if (!adminId || !shop_id) {
+            return res.status(400).send({ success: false, message: "Missing credentials" })
+        }
+
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
+        if (!passport_photo || !identity_proof) {
+            return res.status(400).send({ success: false, message: "Need all proof of documents and photo" })
+
+        }
+
+        if (!firstname || !lastname || !address || !city || !state || !postcode || !email || !password || !phone || !identity) {
+            return res.status(400).send({
+                message: 'Required Fields are missing'
+            });
+        }
+
+        // Access the buffer property of req.file
+        const fileBuffer1 = passport_photo.buffer;
+        const fileBuffer2 = identity_proof.buffer;
+
+        const key1 = passport_photo.originalname;
+        const key2 = identity_proof.originalname;
+
+        const bucketName = process.env.S3_BUCKT_NAME;
+
+
+
+        // Upload the file to S3
+        const s3Url1 = await uploadFileToS3(bucketName, key1, fileBuffer1);
+        const s3Url2 = await uploadFileToS3(bucketName, key2, fileBuffer2);
+
+        const lastId = await getNextSequentialId("EMP")
+        password = await crypto.encrypt(password)
+
+        const shopName = await Shops.findOne({ shop_id: shop_id })
+
+        const emp = await Admin.create({
+            adminId: lastId,
+            firstname: firstname,
+            lastname: lastname,
+            phone: phone,
+            email: email,
+            password: password,
+            address: address,
+            city: city,
+            state: state,
+            zip: postcode,
+            identity: identity,
+            access: {
+                dashboard: false,
+                notification: false,
+                addprod: false,
+                products: false,
+                users: false,
+                employees: false,
+                tags: false,
+                orders: true,
+                settings: false,
+                vendor: false,
+                stocks: false,
+                trasnsaction: false,
+                tax: false,
+                expproducts: false,
+                reqorders: false,
+                platforms: false
+            },
+            image: s3Url1,
+            identity_proof: s3Url2
+
+        })
+
+        const shop = await Shops.create({
+            adminId: lastId,
+            shop_id: shop_id,
+            shop_name: shopName.shop_name,
+            type: shopName.type,
+            logo: shopName.logo
+        })
+
+
+        return res.status(201).send({ success: true, message: "Employee Created" })
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+}
+
+
+const getEmployees = async (req, res) => {
+
+    let { adminId, shop_id, limit, offset, key } = req.query
+    limit = parseInt(limit, 10)
+    offset = parseInt(offset, 0)
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+    let empId = [];
+    let response = [];
+
+    try {
+
+        if (!adminId || !shop_id) {
+            return res.status(400).send({ success: false, message: "Missing credentials" })
+        }
+
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
+        const emp = await Shops.find({
+            shop_id: shop_id,
+            adminId: /EMP/
+        })
+
+        if (emp.length === 0) {
+            return res.status(400).send({ success: false, message: "No employee found" })
+        }
+        emp.map((ele) => empId.push(ele.adminId))
+
+
+
+
+        const result = await Admin.aggregate([
+            {
+                $match: {
+                    adminId: { $in: empId }
+                }
+            },
+            {
+                $facet: {
+                    totalCount: [
+                        { $count: "count" }
+                    ],
+                    data: [
+                        { $sort: { _id: -1 } },
+                        { $skip: offset },
+                        { $limit: limit },
+                    ]
+                }
+            },
+            {
+                $project: {
+                    totalCount: { $arrayElemAt: ["$totalCount.count", 0] },
+                    data: 1
+                }
+            }
+        ])
+
+        result[0].data.map((ele) => {
+            response.push({
+                emp_id: ele.adminId,
+                fname: ele.firstname,
+                lname: ele.lastname,
+                email: ele.email,
+                address: ele.address,
+                state: ele.state,
+                city: ele.city,
+                zip: ele.zip,
+                phone: ele.phone,
+                logo: ele.image,
+                access: ele.access
+            })
+        })
+        let totalCount = result[0]?.totalCount
+        return res.status(200).send({ success: true, message: "Get all employees", totalData: totalCount, data: response })
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+}
+
+
+const getEmpById = async (req, res) => {
+    let { adminId, shop_id } = req.query
+    let empId = req.params.id
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+    let response = {}
+
+    try {
+
+        if (!adminId || !shop_id) {
+            return res.status(400).send({ success: false, message: "Missing credentials" })
+        }
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
+        const result = await Admin.findOne({
+            adminId: empId
+        })
+
+
+        response = {
+            emp_id: result.adminId,
+            fname: result.firstname,
+            lname: result.lastname,
+            email: result.email,
+            password: crypto.decrypt(result.password),
+            identity: result.identity,
+            address: result.address,
+            state: result.state,
+            city: result.city,
+            zip: result.zip,
+            phone: result.phone,
+            logo: result.image,
+            doc: result.identity_proof,
+            access: result.access
+        }
+        return res.status(200).send({ success: true, message: "Get employee", data: response })
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+}
+
+const updateEmp = async (req, res) => {
+
+    let { firstname, lastname, phone, email, password, address, city, state, postcode, identity } = req.body
+    let { adminId, shop_id, empId } = req.query
+    let json = {}
+    access = JSON.parse(req.body.access)
+    phone = parseInt(phone)
+    postcode = parseInt(postcode)
+    const passport_photo = req.files['file1'] ? req.files['file1'][0] : null;
+    const identity_proof = req.files['file2'] ? req.files['file2'][0] : null;
+
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
+    try {
+
+        if (!adminId || !shop_id) {
+            return res.status(400).send({ success: false, message: "Missing credentials" })
+        }
+
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
+        if (!firstname || !lastname || !address || !city || !state || !postcode || !email || !password || !phone || !identity) {
+            return res.status(400).send({
+                message: 'Required Fields are missing'
+            });
+        }
+        password = await crypto.encrypt(password)
+        json = {
+            firstname: firstname,
+            lastname: lastname,
+            phone: phone,
+            email: email,
+            password: password,
+            address: address,
+            city: city,
+            state: state,
+            zip: postcode,
+            identity: identity,
+            access: access
+        }
+        const bucketName = process.env.S3_BUCKT_NAME;
+        if (passport_photo) {
+            const fileBuffer1 = passport_photo.buffer;
+            const key1 = passport_photo.originalname;
+            const s3Url1 = await uploadFileToS3(bucketName, key1, fileBuffer1);
+            json = {
+                ...json,
+                image: s3Url1
+            }
+
+        }
+        if (identity_proof) {
+            const fileBuffer2 = identity_proof.buffer;
+            const key2 = identity_proof.originalname;
+            const s3Url2 = await uploadFileToS3(bucketName, key2, fileBuffer2);
+            json = {
+                ...json,
+                identity_proof: s3Url2
+            }
+        }
+        const emp = await Admin.updateOne({ adminId: empId }, { $set: json })
+
+        return res.status(201).send({ success: true, message: "Employee Created" })
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+}
+
+const deleteEmp = async (req, res) => {
+    let { adminId, shop_id, empId } = req.query
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
+
+    try {
+
+        if (!adminId || !shop_id) {
+            return res.status(400).send({ success: false, message: "Missing credentials" })
+        }
+
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
+        await Admin.remove({ adminId: empId })
+        await Shops.remove({ adminId: empId, shop_id: shop_id })
+
+        return res.status(200).send({ success: true, message: "Employee Deleted" })
+
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+
+}
+
+
+const encrypt_decrypt = async (req, res) => {
+
+    const type = Number(req.query.type)
+    let response;
+    try {
+
+        if (type === 1) {
+            response = await crypto.encrypt(req.body.text)
+        } else if (type === 2) {
+            response = await crypto.decrypt(req.body.text)
+        } else {
+            response = ""
+        }
+        return res.status(200).send({ data: response })
+
+
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+
+}
+
+
+const userAccess = async (req, res) => {
+
+    const adminId = req.query.adminId;
+    const shop_id = req.query.shop_id;
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+
+
+    try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
+        if (!adminId || !shop_id) {
+            return res.status(400).send({ success: false, message: "Missing credentials" })
+        }
+
+        const resss = await Shops.findOne({adminId:adminId,shop_id:shop_id})
+        if(!resss){
+            return res.status(400).send({ success: false, message: "Invalid user" })
+        }
+
+        const respopnse = await Admin.findOne({adminId:adminId})
+
+        return res.status(200).send({ success: true, data:respopnse.access })
+
+
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+
+}
+
+module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, updateTax, getTax, getAllNotifications, updateNotification, countNotification, adminSignin, deleteNotification, getAllPlatforms, addPlatform, editPlatform, updateStatusPlatform, dashboardOnlinegraph, addEmp, getEmployees, getEmpById, updateEmp, deleteEmp, encrypt_decrypt ,userAccess}
