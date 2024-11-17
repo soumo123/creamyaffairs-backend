@@ -1,6 +1,7 @@
 const Order = require('../models/order.model.js');
 const ManualOrder = require('../models/manualorder.model.js')
 const Cart = require("../models/cart.model.js")
+const TransactionReport  = require('../models/transaction.report.js')
 const Product = require('../models/product.model.js')
 const Whishlists = require('../models/whishlist.model.js')
 const { getNextSequentialId, checkAutorized } = require('../utils/helper.js');
@@ -46,7 +47,7 @@ const createOrder = async (req, res) => {
         })
 
         for (const item of receivedData) {
-            const { productId, weight, itemCount } = item;
+            const { productId, weight, itemCount,purchasePrice,price} = item;
             await Product.updateOne(
                 {
                     productId: productId,
@@ -88,6 +89,16 @@ const createOrder = async (req, res) => {
                 }
             )
 
+            await TransactionReport.create({
+                shopId:shop_id,
+                productId:productId,
+                orderId:orderId,
+                quantity:itemCount,
+                totalprice:itemCount*price,
+                weight:weight,
+                purchaseprice:purchasePrice,
+                sellingprice:price,
+            })
 
             const cartItems = await Cart.find({ type: Number(type), "products.productId": productId, "products.weight": weight }).exec();
             for (const cart of cartItems) {
@@ -172,7 +183,7 @@ const createOnlineOrder = async (req, res) => {
         })
 
         for (const item of receivedData) {
-            const { productId, weight, itemCount } = item;
+            const { productId, weight, itemCount ,purchasePrice,price} = item;
             await Product.updateOne(
                 {
                     productId: productId,
@@ -183,6 +194,18 @@ const createOnlineOrder = async (req, res) => {
                 }
             );
 
+            
+            await TransactionReport.create({
+                shopId:shop_id,
+                productId:productId,
+                orderId:orderId,
+                quantity:itemCount,
+                totalprice:itemCount*price,
+                platform:plat_type.value,
+                weight:weight,
+                purchaseprice:purchasePrice,
+                sellingprice:price,
+            })
             // Check if the stock of the product's specific weight is 4, then update process
             const product = await Product.findOne(
                 {

@@ -44,7 +44,7 @@ const getNextSequentialId = async (ids) => {
   }
   if (ids === "ADMIN") {
     idPrefix = "ADMIN";
-    lastId = await Admin.findOne().sort({ _id: -1 });
+    lastId = await Admin.findOne({adminId:/ADMIN/}).sort({ _id: -1 });
     existingIds.push(lastId && lastId.adminId ? lastId.adminId : "");
   }
   if (ids === "SHOP") {

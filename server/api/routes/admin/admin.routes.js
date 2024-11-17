@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { signIn, signUp, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, getAdmin, createShop, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, getTax, updateTax, getAllNotifications, updateNotification, countNotification, adminSignin, deleteNotification, getAllPlatforms, addPlatform, editPlatform, updateStatusPlatform, dashboardOnlinegraph, addEmp, getEmployees, getEmpById, updateEmp, deleteEmp, encrypt_decrypt, userAccess } = require('../../controllers/admin.controller.js');
+const { signIn, signUp, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, getAdmin, createShop, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, getTax, updateTax, getAllNotifications, updateNotification, countNotification, adminSignin, deleteNotification, getAllPlatforms, addPlatform, editPlatform, updateStatusPlatform, dashboardOnlinegraph, addEmp, getEmployees, getEmpById, updateEmp, deleteEmp, encrypt_decrypt, userAccess, reportsData } = require('../../controllers/admin.controller.js');
 const { ensureAuthenticated } = require('../../middleware/jwtVerify.js')
 const multer = require('multer');
 
@@ -70,6 +70,7 @@ router.get("/access",userAccess)
 
 
 router.post("/encrypt_decrypt",encrypt_decrypt)
+router.get("/reportsdata",reportsData)
 
 
 module.exports = router

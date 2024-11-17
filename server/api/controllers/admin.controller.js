@@ -4,6 +4,8 @@ const Order = require('../models/order.model.js')
 const Admin = require('../models/admin.model.js')
 const Images = require('../models/images.model.js')
 const Product = require('../models/product.model.js')
+const TransactionReport = require('../models/transaction.report.js')
+
 const uploadFileToS3 = require('../utils/fileUpload.js')
 const { getNextSequentialId, checkPassword, getLastTypeId, checkAutorized, getLastAndIncrementId1, checkPassword1 } = require('../utils/helper.js')
 const bcrypt = require('bcryptjs')
@@ -26,6 +28,7 @@ const crypto = new Crypto(process.env.DECRYPT_KEY);
 const signUp = async (req, res) => {
     let { name, email, password, mobile } = req.body;
     const file = req.file;
+    const type = Number(req.query.type) || 1;
     try {
         if (!name || !email || !password || !mobile) {
             return res.status(400).send({
@@ -53,17 +56,17 @@ const signUp = async (req, res) => {
         // Upload the file to S3
         const s3Url = await uploadFileToS3(bucketName, key, fileBuffer);
         const lastId = await getNextSequentialId("AKCUS")
-        password = await bcrypt.hash(password, 10)
+        password = await crypto.encrypt(password)
 
 
 
         const user = await User.create({
-            userId: lastId, name, email, password, mobile, image: s3Url
+            userId: lastId, name, email, password, mobile, image: s3Url, type: type
         })
 
         const cart = await Cart.create({
             userId: lastId,
-            type: 1,
+            type: type,
             products: []
         })
 
@@ -88,7 +91,7 @@ const signIn = async (req, res) => {
             return res.status(400).send({ message: "Invalid email or password", success: false })
         }
         console.log("user", user)
-        const isPasswordMatch = await checkPassword(password, user.password);
+        const isPasswordMatch = await checkPassword1(password, user.password);
         console.log(isPasswordMatch);
 
         if (!isPasswordMatch) {
@@ -173,17 +176,17 @@ const getAllImages = async (req, res) => {
 
 const getuserDetailsByAdmin = async (req, res) => {
 
-    const type = Number(req.query.type)
+    const type = Number(req.query.type) || 1
     const adminId = req.query.adminId;
     let token = req.headers['x-access-token'] || req.headers.authorization;
 
     try {
-        let isCheck = await checkAutorized(token, adminId)
-        if (!isCheck.success) {
-            return res.status(400).send(isCheck);
-        }
-
-        const users = await User.find({ type: type });
+        // let isCheck = await checkAutorized(token, adminId)
+        // if (!isCheck.success) {
+        //     return res.status(400).send(isCheck);
+        // }
+        console.log("type", type)
+        const users = await User.find({ type: type })
 
         if (users.length === 0) {
             return res.status(404).send({ message: 'Not User Found In This Platform', success: false, data: [] })
@@ -336,7 +339,7 @@ const signinAdmin = async (req, res) => {
         if (!user) {
             return res.status(400).send({ message: "Invalid email or password", success: false })
         }
-        const isPasswordMatch = await checkPassword(password, user.password);
+        const isPasswordMatch = await checkPassword1(password, user.password);
 
         if (!isPasswordMatch) {
             return res.status(400).send({ message: "Invalid email Or password", success: false })
@@ -667,19 +670,18 @@ const dashboardContents = async (req, res) => {
 };
 
 const dashboardOnlinegraph = async (req, res) => {
-
     const platformId = parseInt(req.query.platformId, 10);
     const adminId = req.query.adminId;
     const shop_id = req.query.shop_id;
     const type = Number(req.query.type);
+    const inputYear = parseInt(req.query.year, 10); // Get year from query
     const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth() + 1; // JavaScript months are zero-based, so +1 for correct month number
-
+    const currentYear = inputYear || currentDate.getFullYear(); // Default to current year if not provided
+    const currentMonth = inputYear ? 12 : currentDate.getMonth() + 1; // If year is given, show all months; otherwise, up to the current month
 
     let token = req.headers['x-access-token'] || req.headers.authorization;
     try {
-        let isCheck = await checkAutorized(token, adminId)
+        let isCheck = await checkAutorized(token, adminId);
         if (!isCheck.success) {
             return res.status(400).send(isCheck);
         }
@@ -687,8 +689,14 @@ const dashboardOnlinegraph = async (req, res) => {
         const revenueData = await Order.aggregate([
             {
                 $match: {
+                    adminId: adminId,
+                    shopId: shop_id,
+                    type: type,
                     'plat_type.value': platformId,
-                    created_at: { $lte: currentDate } // Exclude future months
+                    created_at: {
+                        $gte: new Date(`${currentYear}-01-01`), // Start of the year
+                        $lte: new Date(`${currentYear}-12-31`) // End of the year
+                    }
                 }
             },
             {
@@ -734,23 +742,24 @@ const dashboardOnlinegraph = async (req, res) => {
                 totalOrders: totalOrders,
                 totalRevenue: totalRevenue,
                 revDiff: revDiff,
-                diffpercentage: parseFloat(diffPercentage),
+                diffpercentage: Math.abs(parseFloat(diffPercentage)),
                 color_code: colorCode
             });
 
             previousMonthRevenue = totalRevenue;
         }
-        // results.reverse();
 
-        return res.json({ result: results, totalrevenue: revenueData.reduce((sum, data) => sum + data.totalRevenue, 0) });
+        return res.json({
+            result: results,
+            totalrevenue: revenueData.reduce((sum, data) => sum + data.totalRevenue, 0)
+        });
 
     } catch (error) {
         console.log(error.stack);
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
     }
+};
 
-
-}
 
 
 
@@ -1135,6 +1144,10 @@ const addEmp = async (req, res) => {
 
     let { firstname, lastname, phone, email, password, address, city, state, postcode, identity } = req.body
     let { adminId, shop_id } = req.query
+    email = email.replaceAll(/\s/g, '')
+    password = password.replaceAll(/\s/g, '')
+    firstname = firstname.replaceAll(/\s/g, '')
+    lastname = lastname.replaceAll(/\s/g, '')
     phone = parseInt(phone)
     postcode = parseInt(postcode)
     const passport_photo = req.files['file1'] ? req.files['file1'][0] : null;
@@ -1162,6 +1175,26 @@ const addEmp = async (req, res) => {
         if (!firstname || !lastname || !address || !city || !state || !postcode || !email || !password || !phone || !identity) {
             return res.status(400).send({
                 message: 'Required Fields are missing'
+            });
+        }
+
+        const [emailData, phoneData] = await Promise.all([
+            Admin.findOne({ email: email }),
+            Admin.findOne({ phone: phone }),
+        ]);
+        // Email check
+        if (emailData) {
+            return res.status(400).send({
+                success: false,
+                message: 'Email already exists'
+            });
+        }
+
+        // Phone check
+        if (phoneData) {
+            return res.status(400).send({
+                success: false,
+                message: 'This number already exists'
             });
         }
 
@@ -1515,14 +1548,14 @@ const userAccess = async (req, res) => {
             return res.status(400).send({ success: false, message: "Missing credentials" })
         }
 
-        const resss = await Shops.findOne({adminId:adminId,shop_id:shop_id})
-        if(!resss){
+        const resss = await Shops.findOne({ adminId: adminId, shop_id: shop_id })
+        if (!resss) {
             return res.status(400).send({ success: false, message: "Invalid user" })
         }
 
-        const respopnse = await Admin.findOne({adminId:adminId})
+        const respopnse = await Admin.findOne({ adminId: adminId })
 
-        return res.status(200).send({ success: true, data:respopnse.access })
+        return res.status(200).send({ success: true, data: respopnse.access })
 
 
 
@@ -1534,4 +1567,89 @@ const userAccess = async (req, res) => {
 
 }
 
-module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, updateTax, getTax, getAllNotifications, updateNotification, countNotification, adminSignin, deleteNotification, getAllPlatforms, addPlatform, editPlatform, updateStatusPlatform, dashboardOnlinegraph, addEmp, getEmployees, getEmpById, updateEmp, deleteEmp, encrypt_decrypt ,userAccess}
+
+const reportsData = async (req, res) => {
+
+    let { adminId, shop_id ,limit,offset} = req.query
+    limit = parseInt(limit)
+    offset = parseInt(offset)
+    
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+    const map = new Map()
+    let pdIds = []
+    try {
+        let isCheck = await checkAutorized(token, adminId)
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+
+        // let result = await TransactionReport.find({ shopId: shop_id })
+        let result = await TransactionReport.aggregate([
+            {
+                $match: {
+                    shopId:shop_id
+                }
+            },
+            {
+                $facet: {
+                    totalCount: [
+                        { $count: "count" }
+                    ],
+                    data: [
+                        { $sort: { _id: -1 } },
+                        { $skip: offset },
+                        { $limit: limit },
+                    ]
+                }
+            },
+            {
+                $project: {
+                    totalCount: { $arrayElemAt: ["$totalCount.count", 0] },
+                    data: 1
+                }
+            }
+        ])
+        let totalCount = result[0]?.totalCount
+
+        if (result[0].data.length === 0) {
+            return res.status(400).send({ success: false, message: "Reports not found" })
+        }
+        result[0].data.forEach((ele) => {
+            pdIds.push(ele.productId);
+        });
+        const products = await Product.find({ productId: { $in: pdIds } })
+
+        products.forEach((ele) => {
+            if (!map.has(ele.productId)) {
+                map.set(ele.productId, {
+                    name: ele.name,
+                    unit:ele.unit
+                });
+            }
+        });
+
+        result = result[0].data.flatMap((ele) => ({
+            productname: map.get(ele.productId).name,
+            productId: ele.productId,
+            orderId: ele.orderId,
+            quantity: ele.quantity,
+            totalprice: ele.totalprice,
+            weight: ele.weight +" "+map.get(ele.productId).unit,
+            purchaseprice: ele.purchaseprice,
+            sellingprice: ele.sellingprice,
+        }))
+   
+        
+
+        return res.status(200).send({ success: true, data: result,totalData: totalCount })
+
+
+    } catch (error) {
+        console.log(error.stack);
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+    }
+
+}
+
+
+module.exports = { signUp, signIn, getUser, getAllImages, getuserDetailsByAdmin, userSpecificDetails, registerAdmin, signinAdmin, createShop, getAdmin, getAllShopsForParticularOwner, addReview, getAllReviews, dashboardContents, updateTax, getTax, getAllNotifications, updateNotification, countNotification, adminSignin, deleteNotification, getAllPlatforms, addPlatform, editPlatform, updateStatusPlatform, dashboardOnlinegraph, addEmp, getEmployees, getEmpById, updateEmp, deleteEmp, encrypt_decrypt, userAccess, reportsData }

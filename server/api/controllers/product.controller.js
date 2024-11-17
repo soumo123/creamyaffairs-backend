@@ -677,7 +677,29 @@ const getAllTags = async (req, res) => {
     try {
 
         if (!adminId) {
-            tags = await Tags.find({ type: type }).sort({ _id: -1 })
+            tags = await Tags.aggregate([
+                {
+                    $match: {
+                        type: type
+                    }
+                },
+                {
+                    $facet: {
+                        totalCount: [
+                            { $count: "count" }
+                        ],
+                        data: [
+                            { $sort: { _id: -1 } }
+                        ]
+                    }
+                },
+                {
+                    $project: {
+                        totalCount: { $arrayElemAt: ["$totalCount.count", 0] },
+                        data: 1
+                    }
+                }
+            ])
         } else {
             // tags = await Tags.find({ type: type, userId: adminId })
 
@@ -1423,6 +1445,7 @@ const getqrProducts = async (req, res) => {
                             image: "$thumbnailimage",
                             product_type: "$product_type",
                             ratings: "$ratings",
+                            purchaseprice:"$weight.purchaseprice",
                             weight: "$weight.weight",
                             price: "$weight.price",
                             unit: "$unit",
@@ -1445,6 +1468,7 @@ const getqrProducts = async (req, res) => {
                     ratings: "$details.ratings",
                     weight: "$details.weight",
                     price: "$details.price",
+                    purchaseprice:"$details.purchaseprice",
                     stock: "$details.stock",
                     unit: "$details.unit",
 
