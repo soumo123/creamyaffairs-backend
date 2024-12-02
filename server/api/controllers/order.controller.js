@@ -14,6 +14,7 @@ const createOrder = async (req, res) => {
         const { receivedData, cgst, sgst, initialDeposit, orderedPrice, username, extrathings, extraprice, notes, discount, status, paid, order_method, deliver_date, phone, paymentmethod } = req.body
         const { userId, type, shop_id, adminId, tokenId } = req.query
 
+        console.log("phone",phone)
         let token = req.headers['x-access-token'] || req.headers.authorization;
         let isCheck = await checkAutorized(token, adminId)
         if (!isCheck.success) {
@@ -47,7 +48,14 @@ const createOrder = async (req, res) => {
         })
 
         for (const item of receivedData) {
-            const { productId, weight, itemCount,purchasePrice,price} = item;
+            let { productId, weight, itemCount,purchasePrice,price} = item;
+
+            if(purchasePrice===undefined || purchasePrice===""){
+                let productpurchaseprice = await Product.findOne({productId:productId,"weight.weight":weight}, { "weight.$": 1 })
+                console.log("productpurchaseprice",productpurchaseprice)
+                purchasePrice = productpurchaseprice.weight[0]?.purchaseprice
+            }
+            console.log("purchasePrice",purchasePrice)
             await Product.updateOne(
                 {
                     productId: productId,
@@ -331,14 +339,13 @@ const getSingleOrder = async (req, res) => {
     try {
 
         const orderId = req.params.orderId;
-        const adminId = req.params.adminId;
+        const adminId = req.query.adminId;
         let token = req.headers['x-access-token'] || req.headers.authorization;
-
         try {
-            let isCheck = await checkAutorized(token, adminId)
-            if (!isCheck.success) {
-                return res.status(400).send(isCheck);
-            }
+            // let isCheck = await checkAutorized(token, adminId)
+            // if (!isCheck.success) {
+            //     return res.status(400).send(isCheck);
+            // }
             const orders = await Order.findOne({ orderId: orderId })
             if (!orders) {
                 return res.status(400).send({ success: false, message: "No Order Found" })

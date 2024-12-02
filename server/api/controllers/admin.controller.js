@@ -515,7 +515,6 @@ const addReview = async (req, res) => {
     let type = Number(req.query.type)
     try {
         const { rating, comment } = req.body;
-
         if (!rating || !comment) {
             return res.status(400).send({ success: false, message: "Fields are missing" })
         }
@@ -526,8 +525,11 @@ const addReview = async (req, res) => {
 
         const review = await Product.findOne({ productId: productId, type: type }, { reviews: { $elemMatch: { userId: userId } } })
         const numberofreview = await Product.findOne({ productId: productId, type: type });
-        let totalNumber = numberofreview.numOfReviews
-        console.log("review", review)
+        let totalNumber = numberofreview.numOfReviews;
+        let avgRating = numberofreview && numberofreview.reviews.map(review => review.rating) || [];
+        avgRating.push(rating)
+        let average = avgRating.reduce((sum, num) => sum + num, 0)/ avgRating.length
+
         if (review.reviews.length > 0) {
             return res.status(404).send({ success: false, message: "Already added review" })
         }
@@ -545,7 +547,8 @@ const addReview = async (req, res) => {
 
                 },
                 $set: {
-                    numOfReviews: Number(totalNumber) + 1
+                    numOfReviews: Number(totalNumber) + 1,
+                    ratings: average
                 }
             }
         )
@@ -1570,10 +1573,10 @@ const userAccess = async (req, res) => {
 
 const reportsData = async (req, res) => {
 
-    let { adminId, shop_id ,limit,offset} = req.query
+    let { adminId, shop_id, limit, offset } = req.query
     limit = parseInt(limit)
     offset = parseInt(offset)
-    
+
     let token = req.headers['x-access-token'] || req.headers.authorization;
     const map = new Map()
     let pdIds = []
@@ -1587,7 +1590,7 @@ const reportsData = async (req, res) => {
         let result = await TransactionReport.aggregate([
             {
                 $match: {
-                    shopId:shop_id
+                    shopId: shop_id
                 }
             },
             {
@@ -1623,7 +1626,7 @@ const reportsData = async (req, res) => {
             if (!map.has(ele.productId)) {
                 map.set(ele.productId, {
                     name: ele.name,
-                    unit:ele.unit
+                    unit: ele.unit
                 });
             }
         });
@@ -1634,14 +1637,15 @@ const reportsData = async (req, res) => {
             orderId: ele.orderId,
             quantity: ele.quantity,
             totalprice: ele.totalprice,
-            weight: ele.weight +" "+map.get(ele.productId).unit,
+            weight: ele.weight + " " + map.get(ele.productId).unit,
             purchaseprice: ele.purchaseprice,
             sellingprice: ele.sellingprice,
+            date: ele.created_at
         }))
-   
-        
 
-        return res.status(200).send({ success: true, data: result,totalData: totalCount })
+
+
+        return res.status(200).send({ success: true, data: result, totalData: totalCount })
 
 
     } catch (error) {

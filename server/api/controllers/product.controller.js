@@ -124,10 +124,10 @@ const createProduct = async (req, res, next) => {
 const updateProduct = async (req, res, next) => {
 
     let { name, description, other_description1, other_description2, weight, unit, type, color, size, visiblefor, deliverydays, tags, isBestSelling, isFeatured,
-        isTopSelling, isBranded, isOffered, purchase_price, delivery_partner, product_type, transaction_id,platforms
+        isTopSelling, isBranded, isOffered, purchase_price, delivery_partner, product_type, transaction_id, platforms
     } = req.body;
 
-    let selling_price_method= JSON.parse(req.body.selling_price_method1)
+    let selling_price_method = JSON.parse(req.body.selling_price_method1)
     platforms = JSON.parse(platforms)
 
     const adminId = req.params.adminId
@@ -207,7 +207,7 @@ const updateProduct = async (req, res, next) => {
                 purchase_price: purchase_price,
                 delivery_partner: delivery_partner,
                 selling_price_method: selling_price_method,
-                platforms:platforms,
+                platforms: platforms,
                 product_type: Number(product_type),
                 tags: newTag,
                 visiblefor: visiblefor,
@@ -215,11 +215,11 @@ const updateProduct = async (req, res, next) => {
                 otherimages: otherimages,
                 searchstring: searchString,
                 deliverydays: deliverydays,
-                isBestSelling: Boolean(isBestSelling),
-                isFeatured: Boolean(isFeatured),
-                isTopSelling: Boolean(isTopSelling),
-                isBranded: Boolean(isBranded),
-                isOffered: Boolean(isOffered),
+                isBestSelling: isBestSelling,
+                isFeatured: isFeatured,
+                isTopSelling: isTopSelling,
+                isBranded: isBranded,
+                isOffered: isOffered,
                 barcodeUrl: barcodeUrl
             }
             const product = await Product.updateOne({ productId: productId, type: Number(type), adminId: adminId }, { $set: json })
@@ -278,7 +278,7 @@ const updateProduct = async (req, res, next) => {
                     purchase_price: purchase_price,
                     delivery_partner: delivery_partner,
                     selling_price_method: selling_price_method,
-                    platforms:platforms,
+                    platforms: platforms,
                     product_type: Number(product_type),
                     tags: newTag,
                     visiblefor: visiblefor,
@@ -427,9 +427,32 @@ const getAllProducts = async (req, res) => {
         }
 
         if (tags.length > 0) {
-            query = { type: type, active: 1, expired: false, selling_price_method: "offline", tags: { $in: tags }, price: { $gte: startPrice, $lte: lastPrice } };
+            query = {
+                type: type, active: 1, expired: false, "selling_price_method.label": "offline", tags: { $in: tags },
+                weight: {
+                    "$elemMatch": {
+                        "price": {
+                            "$gte": startPrice,
+                            "$lte": lastPrice
+                        }
+                    }
+                }
+
+
+            };
         } else {
-            query = { type: type, active: 1, expired: false, selling_price_method: "offline", price: { $gte: startPrice, $lte: lastPrice } };
+            query = {
+                type: type, active: 1, expired: false, "selling_price_method.label": "offline",
+                weight: {
+                    "$elemMatch": {
+                        "price": {
+                            "$gte": startPrice,
+                            "$lte": lastPrice
+                        }
+                    }
+                }
+
+            };
         }
         if (!type) {
             return res.status(200).send({
@@ -438,7 +461,14 @@ const getAllProducts = async (req, res) => {
         }
 
         if (searchData) {
-            query = { ...query, price: { $gte: startPrice, $lte: lastPrice }, searchstring: { $regex: searchData, $options: 'i' } }; // Case-insensitive search by name
+            query = { ...query, weight: {
+                "$elemMatch": {
+                    "price": {
+                        "$gte": startPrice,
+                        "$lte": lastPrice
+                    }
+                }
+            }, searchstring: { $regex: searchData, $options: 'i' } }; // Case-insensitive search by name
         }
 
         if (sort === 1) {
@@ -449,39 +479,39 @@ const getAllProducts = async (req, res) => {
             query = { ...query, isTopSelling: true }
         }
 
-
+        console.log("queryquery",query)
 
         const allData = await Product.find(query).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
 
-        const featuredData = await Product.find({ active: 1, expired: false, selling_price_method: "offline", isFeatured: true }).sort({ _id: -1 })
+        const featuredData = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline", isFeatured: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const bestSellingData = await Product.find({ active: 1, expired: false, selling_price_method: "offline", isBestSelling: true }).sort({ _id: -1 })
+        const bestSellingData = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline", isBestSelling: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const brandedData = await Product.find({ active: 1, expired: false, selling_price_method: "offline", isBranded: true }).sort({ _id: -1 })
+        const brandedData = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline", isBranded: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const topSellingData = await Product.find({ active: 1, expired: false, selling_price_method: "offline", isTopSelling: true }).sort({ _id: -1 })
+        const topSellingData = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline", isTopSelling: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const dealsData = await Product.find({ active: 1, expired: false, selling_price_method: "offline", isOffered: true }).sort({ _id: -1 })
+        const dealsData = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline", isOffered: true }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
-        const latestProducts = await Product.find({ active: 1, expired: false, selling_price_method: "offline", created_at: { $gte: latest } }).sort({ _id: -1 })
+        const latestProducts = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline", created_at: { $gte: latest } }).sort({ _id: -1 })
             .skip(offset)
             .limit(limit);
 
 
-        const totalProducts = await Product.find({ active: 1, expired: false, selling_price_method: "offline" })
+        const totalProducts = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline" })
 
         return res.status(200).send({
             message: "Get All Products",
@@ -956,7 +986,7 @@ const adminProducts = async (req, res) => {
     const offset = Number(req.query.offset);
     const expired = req.query.expired;
     const action = Number(req.query.action)
-    const plat_type = Number(req.query.plat_type)|| ""
+    const plat_type = Number(req.query.plat_type) || ""
 
     let token = req.headers['x-access-token'] || req.headers.authorization;
     let isCheck = await checkAutorized(token, adminId)
@@ -976,13 +1006,13 @@ const adminProducts = async (req, res) => {
         }
     }
     try {
-        console.log("plat_type",plat_type)
+        console.log("plat_type", plat_type)
         let query = { adminId: adminId, type: type, expired: { $in: expiremthods } }
 
-        if(plat_type){
-            query  = {...query , "platforms.value": plat_type}
+        if (plat_type) {
+            query = { ...query, "platforms.value": plat_type }
         }
-        console.log("query",query)
+        console.log("query", query)
         if (action === 1) {
             query = { ...query, active: 1 }
         }
@@ -1234,7 +1264,7 @@ const getWhishListProducts = async (req, res) => {
 
     const userId = req.query.userId;
     const type = Number(req.query.type);
-
+    let mp= new Map()
 
     try {
 
@@ -1242,6 +1272,7 @@ const getWhishListProducts = async (req, res) => {
         if (result.length === 0) {
             return res.status(404).send({ message: "No whishlist product found", data: [] })
         }
+
 
         return res.status(200).send({ message: "All Whishlist Products", data: result })
 
@@ -1445,7 +1476,7 @@ const getqrProducts = async (req, res) => {
                             image: "$thumbnailimage",
                             product_type: "$product_type",
                             ratings: "$ratings",
-                            purchaseprice:"$weight.purchaseprice",
+                            purchaseprice: "$weight.purchaseprice",
                             weight: "$weight.weight",
                             price: "$weight.price",
                             unit: "$unit",
@@ -1468,7 +1499,7 @@ const getqrProducts = async (req, res) => {
                     ratings: "$details.ratings",
                     weight: "$details.weight",
                     price: "$details.price",
-                    purchaseprice:"$details.purchaseprice",
+                    purchaseprice: "$details.purchaseprice",
                     stock: "$details.stock",
                     unit: "$details.unit",
 

@@ -8,7 +8,7 @@ const {createOrder, getAllOrders, countOrders,cancelOrder, getSingleOrder, updat
 router.post('/create',createOrder);
 router.post('/createonline',createOnlineOrder);
 router.get('/getorders',getAllOrders)
-router.get("/getorder/:orderId/:adminId",getSingleOrder)
+router.get("/getorder/:orderId",getSingleOrder)
 router.get('/count',countOrders)
 router.put('/cancel',cancelOrder)
 router.put('/updateOrder',updateOrder)
