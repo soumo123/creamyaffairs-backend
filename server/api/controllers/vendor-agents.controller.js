@@ -419,6 +419,7 @@ const addInventory = async (req, res) => {
                 other_description2: "",
                 weight: ele.weights,
                 unit: ele.unit,
+                category:ele.category,
                 // price: 0,
                 purchase_price: "",
                 delivery_partner: distributerName.name,
