@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { addToCart, addWhishList, adminProducts, createProduct , createTags, deleteCartItems, deleteProductByAdmin, deleteSpecificItemFromCart, deleteTags, editTag, getAllCartProducts, getAllProducts, getAllTags, getTotalRatings, getWhishListProducts, getProductById, updateProduct, avaliabilityCheck, countUpdate, updateCategoryStatus, productPriceVariation,expiryproducts, getqrProducts, updatePurchasePrice } = require('../../controllers/product.controller.js');
+const { addToCart, addWhishList, adminProducts, createProduct , createTags, deleteCartItems, deleteProductByAdmin, deleteSpecificItemFromCart, deleteTags, editTag, getAllCartProducts, getAllProducts, getAllTags, getTotalRatings, getWhishListProducts, getProductById, updateProduct, avaliabilityCheck, countUpdate, updateCategoryStatus, productPriceVariation,expiryproducts, getqrProducts, updatePurchasePrice,getcategoricalproducts } = require('../../controllers/product.controller.js');
 const {ensureAuthenticated} = require('../../middleware/jwtVerify.js')
 const multer = require('multer');
 
@@ -37,4 +37,6 @@ router.put("/update_tags/:adminId/:tag_id",upload1,editTag)
 
 router.get('/get_expiry_products',expiryproducts)
 router.put('/update_purchaseprice',updatePurchasePrice)
+
+router.get('/get_deal_pds',getcategoricalproducts)
 module.exports = router
