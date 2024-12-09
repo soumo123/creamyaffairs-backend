@@ -22,6 +22,22 @@ const productSchema = new mongoose.Schema({
     description: {
         type: String,
     },
+    category:{
+        type:String,
+        default:""
+    },
+    discount:{
+        type:Number,
+        default:0
+    },
+    deal_start_date:{
+        type: Date,
+        default:""
+    },
+    deal_end_date:{
+        type: Date,
+        default:""
+    },
     other_description1:{
         type:String
     },
