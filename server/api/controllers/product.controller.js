@@ -1614,6 +1614,43 @@ const updatePurchasePrice = async (req, res) => {
 
 }
 
+
+const getcategoricalproducts = async(req,res)=>{
+
+    let type = Number(type)
+    let {category} = req.body
+    category = category.toLowerCase();
+    category = category.split(" ").join("");
+    
+    let token = req.headers['x-access-token'] || req.headers.authorization;
+    let isCheck = await checkAutorized(token, adminId)
+
+    try {
+        if (!isCheck.success) {
+            return res.status(400).send(isCheck);
+        }
+        if (!type) {
+            return res.status(400).send({ success: false, message: "Missing Credentials" })
+        }
+
+        const result = await Product.find({category:category,expired:false,active:1},{productId:1,name:1,description:1})
+        if(!result){
+            return res.status(400).send({
+                success: false,
+                message: "No Products Found of that category"
+            }) 
+        }
+
+        let totaldata = result.length()
+
+        return res.status(200).send({success:true,message:"Get products",totaldata:totaldata,data:result})
+        
+    } catch (error) {
+        console.error(error);
+        return res.status(500).send({ message: "Internal Server Error", error: error.message });  
+    }
+}
+
 module.exports = {
     createProduct,
     updateProduct,
@@ -1638,5 +1675,6 @@ module.exports = {
     productPriceVariation,
     expiryproducts,
     getqrProducts,
-    updatePurchasePrice
+    updatePurchasePrice,
+    getcategoricalproducts
 } 
