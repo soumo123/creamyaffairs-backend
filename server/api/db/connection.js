@@ -6,8 +6,7 @@ dotenv.config();
 const username = process.env.DB_USERNAME
 const password = process.env.DB_PASSWORD
 
-
-const URL = `mongodb://${username}:${password}@ac-c9takjb-shard-00-00.qbibdoe.mongodb.net:27017,ac-c9takjb-shard-00-01.qbibdoe.mongodb.net:27017,ac-c9takjb-shard-00-02.qbibdoe.mongodb.net:27017/?ssl=true&replicaSet=atlas-vjeqwy-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0`
+const URL = `mongodb://${username}:${password}@cluster0-shard-00-00.dxqeh.mongodb.net:27017,cluster0-shard-00-01.dxqeh.mongodb.net:27017,cluster0-shard-00-02.dxqeh.mongodb.net:27017/?ssl=true&replicaSet=atlas-vuels0-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0`
 const connectToDatabase = async () => {
     try {
       await mongoose.connect(URL, {
