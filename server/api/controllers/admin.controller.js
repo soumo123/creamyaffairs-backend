@@ -309,7 +309,9 @@ const registerAdmin = async (req, res) => {
                 tax: true,
                 expproducts: true,
                 reqorders: true,
-                platforms: true
+                platforms: true,
+                report: true,
+                sales: true
             }
         })
 
@@ -528,7 +530,7 @@ const addReview = async (req, res) => {
         let totalNumber = numberofreview.numOfReviews;
         let avgRating = numberofreview && numberofreview.reviews.map(review => review.rating) || [];
         avgRating.push(rating)
-        let average = avgRating.reduce((sum, num) => sum + num, 0)/ avgRating.length
+        let average = avgRating.reduce((sum, num) => sum + num, 0) / avgRating.length
 
         if (review.reviews.length > 0) {
             return res.status(404).send({ success: false, message: "Already added review" })
@@ -780,7 +782,9 @@ const updateTax = async (req, res) => {
                 cgstvalue: Number(cgstvalue),
                 sgstvalue: Number(sgstvalue)
             }
-        })
+        },
+            { upsert: true }
+        )
 
         return res.status(201).send({ message: "Tax Updated", success: true })
 
@@ -1249,7 +1253,9 @@ const addEmp = async (req, res) => {
                 tax: false,
                 expproducts: false,
                 reqorders: false,
-                platforms: false
+                platforms: false,
+                report: false,
+                sales: false
             },
             image: s3Url1,
             identity_proof: s3Url2

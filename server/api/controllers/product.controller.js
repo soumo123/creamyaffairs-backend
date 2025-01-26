@@ -4,6 +4,7 @@ const Tags = require('../models/tags.model.js')
 const Whishlists = require('../models/whishlist.model.js')
 const Expiry = require('../models/expiredproducts.model.js')
 const Distribute = require('../models/distribute-order.model.js')
+const Sale = require('../models/sale.model.js')
 const uploadFileToS3 = require('../utils/fileUpload.js')
 const { getNextSequentialId, checkPassword, getLastAndIncrementId, generateAndUploadBarcode, checkAutorized } = require('../utils/helper.js')
 const dotenv = require('dotenv');
@@ -412,15 +413,41 @@ const getAllProducts = async (req, res) => {
     const startPrice = Number(req.query.startprice);
     const lastPrice = Number(req.query.lastprice);
     const sort = Number(req.query.sort)
-
+    const temp_id = req.query.temp_id
+    const category = req.query.category
+    let dealsdata = [];
+    let dealObj = {};
     let query;
     try {
-
         const latest = new Date();
         latest.setDate(latest.getDate() - 4);
 
+        const saleProducts = await Sale.find({ active_sale: true })
 
+        const excludedCategories = [];
+        const excludedProducts = [];
+        const productDiscountMap = new Map();
+        const allPdMap = new Map()
+        saleProducts.forEach(sale => {
+            // Exclude categories
+            if (sale.category?.value) {
+                excludedCategories.push(sale.category.value);
+            }
 
+            // Handle sale.products properly
+            if (Array.isArray(sale.products)) {
+                sale.products.forEach(productId => {
+                    if (productId) {
+                        excludedProducts.push(productId);
+                        productDiscountMap.set(productId, sale.discount || null); // Map productId to discount
+                    }
+                });
+            }
+        });
+
+        console.log("excludedCategories", excludedCategories)
+        console.log("excludedProducts", excludedProducts)
+        console.log("productDiscountMap", productDiscountMap)
 
         if (tags.length > 0) {
             tags = tags.split(",").map(item => Number(item));
@@ -428,6 +455,7 @@ const getAllProducts = async (req, res) => {
 
         if (tags.length > 0) {
             query = {
+                productId: { $nin: excludedProducts },
                 type: type, active: 1, expired: false, "selling_price_method.label": "offline", tags: { $in: tags },
                 weight: {
                     "$elemMatch": {
@@ -442,6 +470,7 @@ const getAllProducts = async (req, res) => {
             };
         } else {
             query = {
+                productId: { $nin: excludedProducts },
                 type: type, active: 1, expired: false, "selling_price_method.label": "offline",
                 weight: {
                     "$elemMatch": {
@@ -461,14 +490,58 @@ const getAllProducts = async (req, res) => {
         }
 
         if (searchData) {
-            query = { ...query, weight: {
-                "$elemMatch": {
-                    "price": {
-                        "$gte": startPrice,
-                        "$lte": lastPrice
+            query = {
+                ...query, weight: {
+                    "$elemMatch": {
+                        "price": {
+                            "$gte": startPrice,
+                            "$lte": lastPrice
+                        }
                     }
+                }, searchstring: { $regex: searchData, $options: 'i' }
+            }; // Case-insensitive search by name
+        }
+
+        if (temp_id && category) {
+            query = {
+                // productId:{$nin:excludedProducts},
+                // ...query, weight: {
+                //     // "$elemMatch": {
+                //     //     "price": {
+                //     //         "$gte": startPrice,
+                //     //         "$lte": lastPrice
+                //     //     }
+                //     // }
+                // }, 
+                active_sale: true,
+                "category.value": category,
+                temp_id: temp_id
+            };
+            const saleprodcuts = await Sale.findOne(query)
+            if (saleprodcuts === null) {
+                query = {}
+            } else {
+                if (Array.isArray(saleprodcuts.products)) {
+                    let salePdIds = saleprodcuts.products.map((e) => e)
+                    query = { active: 1, expired: false, productId: { $in: salePdIds }, category: saleprodcuts.category.value }
+                    saleprodcuts.products.forEach(productId => {
+                        if (productId) {
+                            allPdMap.set(productId, saleprodcuts.discount || null); // Map productId to discount
+                        }
+                    });
+                } else {
+                    query = { active: 1, expired: false, category: saleprodcuts.category.value }
+                    const allCategoricalSalepDs = await Product.find({ active: 1, expired: false, category: saleprodcuts.category.value })
+                    allCategoricalSalepDs.forEach(productId => {
+                        if (productId) {
+                            allPdMap.set(productId.productId, saleprodcuts.discount || null); // Map productId to discount
+                        }
+                    });
+
                 }
-            }, searchstring: { $regex: searchData, $options: 'i' } }; // Case-insensitive search by name
+            }
+
+
         }
 
         if (sort === 1) {
@@ -479,39 +552,31 @@ const getAllProducts = async (req, res) => {
             query = { ...query, isTopSelling: true }
         }
 
-        console.log("queryquery",query)
+        console.log("queryquery", query, allPdMap)
+        const [allData, featuredData, bestSellingData, brandedData, topSellingData, latestProducts, dealsdata, totalProducts] = await Promise.all([
+            Product.find(query).skip(offset)
+                .limit(limit),
+            Product.find({ productId: { $nin: excludedProducts }, active: 1, expired: false, "selling_price_method.label": "offline", isFeatured: true }).skip(offset)
+                .limit(limit),
+            Product.find({ productId: { $nin: excludedProducts }, active: 1, expired: false, "selling_price_method.label": "offline", isBestSelling: true }).skip(offset)
+                .limit(limit),
+            Product.find({ productId: { $nin: excludedProducts }, active: 1, expired: false, "selling_price_method.label": "offline", isBranded: true }).skip(offset)
+                .limit(limit),
+            Product.find({ productId: { $nin: excludedProducts }, active: 1, expired: false, "selling_price_method.label": "offline", isTopSelling: true }).skip(offset)
+                .limit(limit),
+            Product.find({ productId: { $nin: excludedProducts }, active: 1, expired: false, "selling_price_method.label": "offline", created_at: { $gte: latest } }).skip(offset)
+                .limit(limit),
+            Product.find({ productId: { $in: excludedProducts }, active: 1, expired: false, "selling_price_method.label": "offline" }).skip(offset)
+                .limit(limit),
+            Product.find({ active: 1, expired: false, "selling_price_method.label": "offline" })
+        ]);
+        dealsdata.forEach(product => {
+            product.discount = productDiscountMap.get(product.productId) || 0; // Default to 0 if no discount
+        });
+        allData.forEach(product => {
+            product.discount = allPdMap.get(product.productId) || 0; // Default to 0 if no discount
+        });
 
-        const allData = await Product.find(query).sort({ _id: -1 })
-            .skip(offset)
-            .limit(limit);
-
-
-        const featuredData = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline", isFeatured: true }).sort({ _id: -1 })
-            .skip(offset)
-            .limit(limit);
-
-        const bestSellingData = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline", isBestSelling: true }).sort({ _id: -1 })
-            .skip(offset)
-            .limit(limit);
-
-        const brandedData = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline", isBranded: true }).sort({ _id: -1 })
-            .skip(offset)
-            .limit(limit);
-
-        const topSellingData = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline", isTopSelling: true }).sort({ _id: -1 })
-            .skip(offset)
-            .limit(limit);
-
-        const dealsData = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline", isOffered: true }).sort({ _id: -1 })
-            .skip(offset)
-            .limit(limit);
-
-        const latestProducts = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline", created_at: { $gte: latest } }).sort({ _id: -1 })
-            .skip(offset)
-            .limit(limit);
-
-
-        const totalProducts = await Product.find({ active: 1, expired: false, "selling_price_method.label": "offline" })
 
         return res.status(200).send({
             message: "Get All Products",
@@ -521,8 +586,9 @@ const getAllProducts = async (req, res) => {
             bestSellingData: bestSellingData,
             brandedData: brandedData,
             topSellingData: topSellingData,
-            dealsData: dealsData,
-            latestProducts: latestProducts
+            latestProducts: latestProducts,
+            dealsData: dealsdata,
+            // deals,
         })
 
     } catch (error) {
@@ -536,6 +602,9 @@ const getProductById = async (req, res) => {
     const productId = req.query.productId;
     const type = Number(req.query.type);
     const adminId = req.query.adminId;
+    const category = req.query.category;
+    const shop_id = req.query.shop_id;
+    let discount = 0;
     let query = undefined;
     let token = req.headers['x-access-token'] || req.headers.authorization;
 
@@ -549,6 +618,20 @@ const getProductById = async (req, res) => {
                 success: false,
                 message: "Fields are missing"
             })
+        }
+        const saleProducts = await Sale.findOne({active_sale:true,"category.value":category,shop_id:shop_id})
+        if(saleProducts){
+            let pds = saleProducts.products;
+            if(Array.isArray(pds)){
+                if(pds.includes(productId)){
+                    discount = saleProducts.discount
+                }
+            }else{
+                discount = saleProducts.discount
+            }
+            
+        }else{
+            discount = 0
         }
 
         if (adminId) {
@@ -565,10 +648,16 @@ const getProductById = async (req, res) => {
             })
         }
 
+        const productsWithDiscount = products.map(product => {
+            return {
+                ...product.toObject(),
+                discount: discount
+            };
+        });
         return res.status(200).send({
             message: "Get Products by Id",
             success: true,
-            data: products
+            data: productsWithDiscount
         })
 
     } catch (error) {
@@ -784,7 +873,7 @@ const addToCart = async (req, res) => {
     const type = Number(req.query.type);
 
     try {
-        let { name, description, price, itemCount, weight, stock, color, thumbImage, totalPrice } = req.body;
+        let { name, description, price, itemCount, weight, stock, color, thumbImage, totalPrice ,discount} = req.body;
 
         weight = parseInt(weight)
 
@@ -793,11 +882,7 @@ const addToCart = async (req, res) => {
         if (!user) {
             return res.status(400).send({ message: "User Not Found In cart", success: false });
         }
-        console.log("type userId productId color weight ", type,
-            userId,
-            productId,
-            color,
-            weight)
+
         const carts = await Cart.findOne({ type: type, userId: userId }, { products: { $elemMatch: { productId: productId, color: color, weight: weight } } })
 
         console.log("carts", carts)
@@ -853,7 +938,7 @@ const addToCart = async (req, res) => {
                 color: color,
                 price: Number(price),
                 itemCount: Number(itemCount),
-                // discount: Number(discount),
+                discount: Number(discount),
                 totalPrice: Number(totalPrice),
                 thumbImage: thumbImage
             });
@@ -870,7 +955,7 @@ const addToCart = async (req, res) => {
                 color: color,
                 price: Number(price),
                 itemCount: carts.products[0].itemCount + Number(itemCount),
-                // discount: Number(discount),
+                discount: Number(discount),
                 totalPrice: Number(price) * (carts.products[0].itemCount + Number(itemCount)),
                 thumbImage: thumbImage
 
@@ -973,6 +1058,36 @@ const deleteSpecificItemFromCart = async (req, res) => {
     }
 }
 
+async function processSaleProducts(saleproducts) {
+    const allPdMap = new Map(); // Initialize the Map
+
+    if (saleproducts) {
+        for (const ele of saleproducts) {
+            if (Array.isArray(ele.products)) {
+                ele.products.forEach(productId => {
+                    if (productId) {
+                        allPdMap.set(String(productId), { discount: ele.discount || 0 }); // Ensure productId is a string
+                    }
+                });
+            } else if (ele.category && ele.category.value) {
+                const allCategoricalSalepDs = await Product.find({
+                    active: 1,
+                    expired: false,
+                    category: ele.category.value,
+                });
+                allCategoricalSalepDs.forEach(product => {
+                    if (product.productId) {
+                        allPdMap.set(String(product.productId), { discount: ele.discount || 0 }); // Ensure productId is a string
+                    }
+                });
+            }
+        }
+    }
+
+    return allPdMap; // Return the map object
+}
+
+
 //get all products of admin //
 
 const adminProducts = async (req, res) => {
@@ -987,7 +1102,6 @@ const adminProducts = async (req, res) => {
     const expired = req.query.expired;
     const action = Number(req.query.action)
     const plat_type = Number(req.query.plat_type) || ""
-
     let token = req.headers['x-access-token'] || req.headers.authorization;
     let isCheck = await checkAutorized(token, adminId)
     if (!isCheck.success) {
@@ -1007,6 +1121,12 @@ const adminProducts = async (req, res) => {
     }
     try {
         console.log("plat_type", plat_type)
+        const saleprodcuts = await Sale.find({ adminId: adminId, active_sale: true })
+
+        const allPdMap = await processSaleProducts(saleprodcuts);
+
+        console.log("allPdMap",allPdMap)
+
         let query = { adminId: adminId, type: type, expired: { $in: expiremthods } }
 
         if (plat_type) {
@@ -1089,6 +1209,12 @@ const adminProducts = async (req, res) => {
         }
         const products = await Product.find(query).sort({ _id: -1 }).skip(offset)
             .limit(limit);
+
+            products.forEach(product => {
+                const discountEntry = allPdMap.get(String(product.productId)); // Convert productId to string
+                product.discount = discountEntry ? discountEntry.discount : 0; // Default to 0 if no discount
+            });
+
         const totalData = await Product.find({ type: type, adminId: adminId, expired: { $in: expiremthods } }).sort({ _id: -1 }).count();
 
 
@@ -1264,7 +1390,7 @@ const getWhishListProducts = async (req, res) => {
 
     const userId = req.query.userId;
     const type = Number(req.query.type);
-    let mp= new Map()
+    let mp = new Map()
 
     try {
 
@@ -1458,7 +1584,9 @@ const getqrProducts = async (req, res) => {
         if (searchData) {
             matchQuery.searchstring = { $regex: searchData, $options: "i" };  // Case-insensitive search
         }
+        const saleprodcuts = await Sale.find({ active_sale: true })
 
+        const allPdMap = await processSaleProducts(saleprodcuts);
         const products = await Product.aggregate([
             {
                 $match: matchQuery
@@ -1514,6 +1642,10 @@ const getqrProducts = async (req, res) => {
             }
         ])
 
+        products.forEach(product => {
+            const discountEntry = allPdMap.get(String(product._id)); // Convert productId to string
+            product.discount = discountEntry ? discountEntry.discount : 0; // Default to 0 if no discount
+        });
 
         return res.status(200).send({
             success: true,
@@ -1615,13 +1747,10 @@ const updatePurchasePrice = async (req, res) => {
 }
 
 
-const getcategoricalproducts = async(req,res)=>{
+const getcategoricalproducts = async (req, res) => {
 
-    let type = Number(type)
-    let {category} = req.body
-    category = category.toLowerCase();
-    category = category.split(" ").join("");
-    
+    let { category, adminId } = req.query
+
     let token = req.headers['x-access-token'] || req.headers.authorization;
     let isCheck = await checkAutorized(token, adminId)
 
@@ -1629,25 +1758,47 @@ const getcategoricalproducts = async(req,res)=>{
         if (!isCheck.success) {
             return res.status(400).send(isCheck);
         }
-        if (!type) {
-            return res.status(400).send({ success: false, message: "Missing Credentials" })
+
+        if (!category) {
+            return res.status(400).send({ success: false, message: "Category missing" })
         }
 
-        const result = await Product.find({category:category,expired:false,active:1},{productId:1,name:1,description:1})
-        if(!result){
-            return res.status(400).send({
-                success: false,
-                message: "No Products Found of that category"
-            }) 
-        }
+        let result = await Product.aggregate([
+            {
+                $match: { category: category, expired: false, active: 1 }
+            },
+            {
+                $facet: {
+                    totalCount: [
+                        { $count: "count" }
+                    ],
+                    data: [
+                        { $sort: { _id: -1 } },
+                        // { $skip: offset },
+                        // { $limit: limit },
+                    ]
+                }
+            },
+            {
+                $project: {
+                    totalCount: { $arrayElemAt: ["$totalCount.count", 0] },
+                    data: 1
+                }
+            }
+        ])
+        let totalCount = result[0]?.totalCount
 
-        let totaldata = result.length()
+        result = result[0].data.map((ele) => ({
+            productId: ele.productId,
+            name: ele.name,
+            description: ele.description
+        }));
 
-        return res.status(200).send({success:true,message:"Get products",totaldata:totaldata,data:result})
-        
+        return res.status(200).send({ success: true, message: "Get products", totalData: totalCount, data: result })
+
     } catch (error) {
         console.error(error);
-        return res.status(500).send({ message: "Internal Server Error", error: error.message });  
+        return res.status(500).send({ message: "Internal Server Error", error: error.message });
     }
 }
 

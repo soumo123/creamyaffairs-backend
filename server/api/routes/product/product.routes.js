@@ -38,5 +38,5 @@ router.put("/update_tags/:adminId/:tag_id",upload1,editTag)
 router.get('/get_expiry_products',expiryproducts)
 router.put('/update_purchaseprice',updatePurchasePrice)
 
-router.get('/get_deal_pds',getcategoricalproducts)
+router.get('/get_cat_pds',getcategoricalproducts)
 module.exports = router

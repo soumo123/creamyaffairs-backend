@@ -11,6 +11,7 @@ const Distribute = require('../models/distribute-order.model.js')
 const RequestOrder = require('../models/requestorder.model.js')
 const ManualOrder = require('../models/manualorder.model.js')
 const Platform = require('../models/platform.model.js')
+const Template = require('../models/template.model.js')
 const jwt = require('jsonwebtoken')
 const Crypto = require('../utils/decrypt.js')
 
@@ -86,6 +87,11 @@ const getNextSequentialId = async (ids) => {
     idPrefix = "EMP";
     lastId = await Admin.findOne().sort({ _id: -1 });
     existingIds.push(lastId && lastId.adminId ? lastId.adminId : "");
+  }
+  if (ids === "TEMP") {
+    idPrefix = "TEMP";
+    lastId = await Template.findOne().sort({ _id: -1 });
+    existingIds.push(lastId && lastId.temp_id ? lastId.temp_id : "");
   }
   if(ids===""){
     idPrefix = "";

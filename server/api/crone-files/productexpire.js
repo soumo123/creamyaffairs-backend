@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const Expiry = require('../models/expiredproducts.model.js')
 const Products = require('../models/product.model.js')
 const Notification = require('../models/notification.model.js');
+const Sale = require('../models/sale.model.js')
 const { checkExpiry } = require('../utils/helper.js');
 dotenv.config();
 
@@ -21,7 +22,7 @@ const productExpiry = async () => {
                 //         { $eq: [{ $dayOfMonth: "$expiry_date" }, { $dayOfMonth: new Date() }] }
                 //     ]
                 // },
-                expiry_date: {$lte: new Date()},
+                expiry_date: { $lte: new Date() },
                 active: 1,
                 expired: false
             });
@@ -118,7 +119,7 @@ const sendNotification = async () => {
 
                     await Notification.create({
                         productId: ele.productId,
-                        agentId:ele.agentId,
+                        agentId: ele.agentId,
                         adminId: ele.adminId,
                         productname: ele.name,
                         message: `Hurry ${checkTime}`,
@@ -158,4 +159,29 @@ const sendNotification = async () => {
 
 
 }
-module.exports = { productExpiry, sendNotification }
+
+const expirySale = async () => {
+    cron.schedule(process.env.SALE_CRONE, async () => {
+        try {
+            console.log("----Sale Update Start----")
+            const currentTime = new Date();
+
+            // Update sales where start_date is in the past
+            const result = await Sale.updateMany(
+                { end_date: { $lt: currentTime }, active_sale: true },
+                { $set: { active_sale: false } }
+            );
+
+            if (result.modifiedCount > 0) {
+                console.log(`${result.modifiedCount} sales updated to inactive.`);
+            }
+            console.log("----Sale Update finish----")
+
+        } catch (error) {
+            console.error("Error updating sales:", error);
+        }
+    })
+}
+
+
+module.exports = { productExpiry, sendNotification,expirySale }

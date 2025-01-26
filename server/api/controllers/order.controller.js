@@ -524,7 +524,8 @@ const manualReqOrder = async (req, res) => {
             phone: Number(body.phone),
             type: type,
             products: body.products,
-            orderedPrice: body.orderedPrice
+            orderedPrice: body.orderedPrice,
+            discount:Number(body.discount) || 0 
         }
 
         console.log("jsonjsonjson", json)
