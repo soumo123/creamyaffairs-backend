@@ -311,7 +311,8 @@ const registerAdmin = async (req, res) => {
                 reqorders: true,
                 platforms: true,
                 report: true,
-                sales: true
+                sales: true,
+                templates:true
             }
         })
 
@@ -1255,7 +1256,8 @@ const addEmp = async (req, res) => {
                 reqorders: false,
                 platforms: false,
                 report: false,
-                sales: false
+                sales: false,
+                templates:false
             },
             image: s3Url1,
             identity_proof: s3Url2
