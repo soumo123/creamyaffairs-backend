@@ -66,7 +66,7 @@ app.use(bodyParser.json({ extended: true }))
 app.use(bodyParser.urlencoded({ extended: true }))
 
 
-connectToDatabase()
+// connectToDatabase()
 
 app.use("/api/v1",user)
 app.use("/api/v1/product",product)
